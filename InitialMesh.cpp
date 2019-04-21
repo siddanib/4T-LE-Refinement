@@ -5,6 +5,9 @@
 #include <fstream>
 #include <cstdlib>
 #include <string>
+#include <sstream>
+#include <iomanip>
+#include <map>
 
 using namespace std;
 
@@ -25,10 +28,10 @@ public:
 		y = y1;
 	}
 	/*Members*/
-	double getX() {
+	double getX() const{
 		return x;
 	}
-	double getY() {
+	double getY() const{
 		return y;
 	}
 	void setX(double xx) {
@@ -55,8 +58,26 @@ public:
 			return false;
 		}
 	}
+	bool operator<(const Vertex& v2) const{
+		double x2,y2;
+		x2 = v2.getX();
+		y2 = v2.getY();
+		if(x<x2){
+			return true;
+		}
+		else if(x==x2){
+			if(y<y2){
+				return true;
+			}
+			else{
+				return false;
+			}
+		}
+		else{
+			return false;
+		}
+	}
 };
-
 
 
 /*Edge type can be used to implement different boundary conditions*/
@@ -349,7 +370,7 @@ int main() {
 	vector<Triangle> trgl;
 
 	ifstream inFile;
-	inFile.open("Mesh.txt");
+	inFile.open("Mesh.msh");
 	if (!inFile.is_open()) {
 		cout << "File didn't open\n";
 		exit(EXIT_FAILURE);
@@ -409,8 +430,8 @@ int main() {
 
 	//Test case setting two triangles to refine
 	trgl[0].setRefine(true);
-	trgl[1].setRefine(true);
-	trgl[2].setRefine(true);
+	//trgl[1].setRefine(true);
+	//trgl[2].setRefine(true);
 	//trgl[3].setRefine(true);
 
 	for (int i = 0;i < trgl.size();i++) {
@@ -437,6 +458,23 @@ int main() {
 		}
 	}
 	// Adding of opposite vertices to edges is done
+	
+	//Using maps for edges and triangles
+	map<Vertex,int> emap; //For edges
+	map<Vertex,int> tmap; //For triangles
+	
+	//Updating emap
+	for(int i=0;i<edg.size();i++){
+		Vertex va = edg[i].getMidpoint();
+		emap[va] = i;
+	}
+	
+	//Updating tmap
+	for(int i=0;i<trgl.size();i++){
+		Vertex va = trgl[i].getCentroid();
+		tmap[va] = i;
+	}
+	
 	// Next, running through refinement of triangles (Use opposite vertex)
 	// Followed by deleting of old edges and triangles, and
 	//adding new edges and triangles to respective vectors
@@ -452,11 +490,12 @@ int main() {
 				while (decision) {
 					//Finding the edge from edg which contains this point
 					int k; //To track edge number
-					for (k = 0;k < edg.size();k++) {
+					/*for (k = 0;k < edg.size();k++) {
 						if (ver[j].equals(edg[k].getMidpoint())) {
 							break;
 						}
-					}
+					}*/
+					k = emap[ver[j]];
 					//Found the edge
 					//Getting opposite vertices from this edge to construct neighbouring triangle
 					vector<Vertex> oppVer = edg[k].getOppVertices();
@@ -480,11 +519,13 @@ int main() {
 					//To find this triangle in trgl
 					int l; //To track triangle number
 					if (neigTri.size() == 1) {
-						for (l = 0;l < trgl.size();l++) {
+						Vertex va = neigTri[0].getCentroid();
+						l = tmap[va];
+						/*for (l = 0;l < trgl.size();l++) {
 							if (neigTri[0].equals(trgl[l])) {
 								break;
 							}
-						}
+						}*/
 						trgl[l].addNewNode(ver[j]);
 						decision = !(ver[j].equals(trgl[l].getLongestEdge().getMidpoint()));
 						if (decision) {
@@ -500,6 +541,11 @@ int main() {
 			}
 		}
 	}
+	
+	//Clearing maps for edges and triangles
+	emap.clear();
+	tmap.clear();
+	
 	//Updating all the triangles with bisected edges
 	for (int m = 0;m < trgl.size();m++) {
 		if (trgl[m].getNewVertices() > 0) {
@@ -791,7 +837,7 @@ int main() {
 		}
 	}
 	//End of updating triangles
-	cout << "No of Edges\t" << edg.size() << endl;
+	/*cout << "No of Edges\t" << edg.size() << endl;
 	cout << "No of Triangles\t" << trgl.size() << endl;
 	cout << "Edge info\n";
 	for (int k = 0;k < edg.size();k++) {
@@ -811,7 +857,7 @@ int main() {
 			cout << ver[j].getX() << "\t" << ver[j].getY() << "\t";
 		}
 		cout << "\n";
-	}
+	}*/
 
 	/*for(int k=0;k<trgl.size();k++){
 		vector<Vertex> ver=trgl[k].getVertices();
@@ -819,4 +865,132 @@ int main() {
 			cout<<ver[j].getX()<<"\t"<<ver[j].getY()<<"\n";
 		}
 	}*/
+	
+	//Creating new output file for the new mesh
+	vector<Vertex> newver;
+	map<Vertex,int> vmap;
+	for(int i=0;i<trgl.size();i++){
+		vector<Vertex> vex = trgl[i].getVertices();
+		for(int j=0;j<3;j++){
+			int l=0;
+			if(vmap.count(vex[j])>0){
+				l=1;
+			}
+			/*for(int k=0;k<newver.size();k++){
+				if(vex[j].equals(newver[k])){
+					l=1;
+					break;
+				}
+			}*/
+			if(l==0){
+				newver.push_back(vex[j]);
+				vmap[vex[j]] = newver.size();
+			}
+		}
+	}
+	//Storing all non zero type edges
+	vector<Edge> newedg;
+	for(int i=0;i<edg.size();i++){
+		if(edg[i].getType()!=0){
+			newedg.push_back(edg[i]);
+		}
+	}
+	//Retrieving physical name number of surface
+	ifstream ifil;
+	ifil.open("Mesh.msh");
+	string cc;
+	int trno; //To track the physical name number of surface
+	while(ifil>>cc){
+		if(cc.compare("$PhysicalNames")==0){
+			int tot;
+			ifil>>tot;
+			for(int i=0;i<tot;i++){
+				int j1,j2;
+				string c1;
+				ifil>>j1;
+				if(j1==1){
+					ifil>>j2;
+					ifil>>c1;
+				}
+				if(j1==2){
+					ifil>>trno;
+					ifil>>c1;
+				}
+			}
+			break;
+		}
+	}
+	ifil.close();
+	
+	setprecision(10); //Setting precision for output file
+	ifstream ifile;
+	ifile.open("Mesh.msh");
+	if(!ifile.is_open()){
+		cout<<"File didn't open 825\n";
+		exit(EXIT_FAILURE);
+	}
+	ofstream ofile; //To create new file
+	ofile.open("NewMesh.msh");
+	string lin;
+	while(getline(ifile,lin)){
+		istringstream iss(lin);
+		string li;
+		ofile<<lin<<endl;
+		iss >> li;
+		if(li.compare("$EndPhysicalNames")==0){
+			break;
+		}
+	}
+	ifile.close();
+	ofile<<"$Nodes"<<endl;
+	ofile<<newver.size()<<endl;
+	for(int i=0;i<newver.size();i++){
+		ofile<<vmap[newver[i]]<<" "<<newver[i].getX()<<" "<<newver[i].getY()<<" 0\n";
+	}
+	ofile<<"$EndNodes"<<endl;
+	ofile<<"$Elements"<<endl;
+	ofile<<newedg.size()+trgl.size()<<endl;
+	for(int i=0;i<newedg.size()+trgl.size();i++){
+		if(i<newedg.size()){
+			int j1,j2;
+			vector<Vertex> vexx = newedg[i].getVertices();
+			j1 = vmap[vexx[0]];
+			j2 = vmap[vexx[1]];
+			ofile<<i+1<<" 1 2 "<<newedg[i].getType();
+			ofile<<" "<<newedg[i].getType()+1<<" "<<j1<<" "<<j2<<endl;
+		}
+		else{
+			int j1,j2,j3,jj2,jj3;
+			vector<Vertex> vexx = trgl[i-newedg.size()].getVertices();
+			j1=vmap[vexx[0]];
+			j2=vmap[vexx[1]];
+			j3=vmap[vexx[2]];
+			double xx1,xx2,xx3,yy1,yy2,yy3,x21,y21,x31,y31,d;
+			xx1 = vexx[0].getX();
+			yy1 = vexx[0].getY();
+			xx2 = vexx[1].getX();
+			yy2 = vexx[1].getY();
+			xx3 = vexx[2].getX();
+			yy3 = vexx[2].getY();
+			
+			x21 = xx2-xx1;
+			y21 = yy2-yy1;
+			x31 = xx3-xx1;
+			y31 = yy3-yy1;
+			d = x21*y31-x31*y21;
+			if(d>0){
+				jj2=j2;
+				jj3 = j3;
+			}
+			else{
+				jj2 = j3;
+				jj3 = j2;
+			}
+			
+			ofile<<i+1<<" 2 2 "<<trno<<" "<<1<<" "<<j1;
+			ofile<<" "<<jj2<<" "<<jj3<<endl;
+		}
+	}
+	ofile<<"$EndElements"<<endl;
+	ofile.close();
 }
