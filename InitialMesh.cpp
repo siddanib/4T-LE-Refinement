@@ -432,9 +432,6 @@ int main() {
 		}
 	}
 	inFile.close();
-	cout << vertices.size() << endl;
-	cout << "No of Non-Zero Type Edges in the Initial Mesh " << edg.size() << endl;
-	cout << "No of Triangles in the Initial Mesh " << trgl.size() << endl;
 
 	//Test case setting two triangles to refine
 	//trgl[0].setRefine(true);
@@ -498,11 +495,6 @@ int main() {
 				while (decision) {
 					//Finding the edge from edg which contains this point
 					int k; //To track edge number
-					/*for (k = 0;k < edg.size();k++) {
-						if (ver[j].equals(edg[k].getMidpoint())) {
-							break;
-						}
-					}*/
 					k = emap[ver[j]];
 					//Found the edge
 					//Getting opposite vertices from this edge to construct neighbouring triangle
@@ -529,11 +521,6 @@ int main() {
 					if (neigTri.size() == 1) {
 						Vertex va = neigTri[0].getCentroid();
 						l = tmap[va];
-						/*for (l = 0;l < trgl.size();l++) {
-							if (neigTri[0].equals(trgl[l])) {
-								break;
-							}
-						}*/
 						trgl[l].addNewNode(ver[j]);
 						decision = !(ver[j].equals(trgl[l].getLongestEdge().getMidpoint()));
 						if (decision) {
@@ -607,27 +594,6 @@ int main() {
 				}
 				w[0] = emap[oldEdge1.getMidpoint()];
 				w[1] = emap[oldEdge2.getMidpoint()];
-				
-				/*for (int n1 = 0;n1 < edg.size();n1++) {
-					if (longEdge.equals(edg[n1])) {
-						n[0][0] = n1;
-						n[0][1] = edg[n1].getType();
-					}
-					if (e1.equals(edg[n1])) {
-						n[1][0] = n1;
-						n[1][1] = 1;
-					}
-					if (e2.equals(edg[n1])) {
-						n[2][0] = n1;
-						n[2][1] = 1;
-					}
-					if (oldEdge1.equals(edg[n1])) {
-						w[0] = n1;
-					}
-					if (oldEdge2.equals(edg[n1])) {
-						w[1] = n1;
-					}
-				}*/
 				//For New edge 1
 				if (n[1][1] == 0) { //Means edge e1 doesnt exist
 					e1.addOppVertices(OpplongVer);
@@ -663,7 +629,7 @@ int main() {
 				Vertex oppLongVer = trgl[m].getOppVertexofPoint(longVer);
 				Vertex oppOtherVer = trgl[m].getOppVertexofPoint(otherVer);
 				Vertex thirdVer = trgl[m].getThirdVertex(oppLongVer, oppOtherVer);
-				//Creating new triangles and deleting old triangles
+				//Creating new triangles and incrementing count of old triangles
 				Triangle t1(longVer, oppLongVer, oppOtherVer);
 				Triangle t2(longVer, oppLongVer, otherVer);
 				Triangle t3(longVer, otherVer, thirdVer);
@@ -673,8 +639,9 @@ int main() {
 				tmap[t2.getCentroid()]  = trgl.size()-1;
 				trgl.push_back(t3);
 				tmap[t3.getCentroid()]  = trgl.size()-1;
-				//trgl.erase(trgl.begin() + m);
+				
 				trgl[m].incrementCount();
+				
 				//Creating new edges (if they don't exist) and deletion of obsolete edges
 				Edge e1(oppLongVer, longVer, 0);
 				e1.addOppVertices(oppOtherVer);
@@ -733,23 +700,7 @@ int main() {
 					n[5][1] = 1;
 				}
 				w = emap[oldEdge.getMidpoint()];
-				/*for (int n1 = 0;n1 < edg.size();n1++) {
-					for (int j = 0;j < 6;j++) {
-						if (e[j].equals(edg[n1])) {
-							if (j < 2) {
-								n[j][0] = n1;
-								n[j][1] = edg[n1].getType();
-							}
-							else {
-								n[j][0] = n1;
-								n[j][1] = 1;
-							}
-						}
-					}
-					if (oldEdge.equals(edg[n1])) {
-						w = n1;
-					}
-				}*/
+
 				for (int j = 2;j < 6;j++) {
 					int g = 0;//e[2],e[3] are subdivisions of e[0]
 					if (j > 3) { //e[4],e[5] are subdivisions of e[1]
@@ -876,20 +827,6 @@ int main() {
 					n[8][1] = 1;
 				}
 				
-				/*for (int n1 = 0;n1 < edg.size();n1++) {
-					for (int j = 0;j < 9;j++) {
-						if (e[j].equals(edg[n1])) {
-							if (j < 3) {
-								n[j][0] = n1;
-								n[j][1] = edg[n1].getType();
-							}
-							else {
-								n[j][0] = n1;
-								n[j][1] = 1;
-							}
-						}
-					}
-				}*/
 				for (int j = 3;j < 9;j++) {
 					int g = 0;//e[3],e[4] are subdivisions of e[0]
 					if (j > 4) {//e[5],e[6] are subdivisions of e[1]
@@ -942,36 +879,7 @@ int main() {
 	//Clearing maps for edges and triangles
 	emap.clear();
 	tmap.clear();
-	
-	/*cout << "No of Edges\t" << edg.size() << endl;
-	cout << "No of Triangles\t" << trgl.size() << endl;
-	cout << "Edge info\n";
-	for (int k = 0;k < edg.size();k++) {
-		vector<Vertex> oppVer = edg[k].getOppVertices();
-		cout << edg[k].getVertex1().getX() << "\t" << edg[k].getVertex1().getY() << "\t";
-		cout << edg[k].getVertex2().getX() << "\t" << edg[k].getVertex2().getY() << "\t" << edg[k].getType() << "\t";
-		for (int l = 0;l < oppVer.size();l++) {
-			cout << oppVer[l].getX() << "\t" << oppVer[l].getY() << "\t";
-		}
-		cout << "\n";
-	}
-
-	cout << "Triangle info" << endl;
-	for (int k = 0;k < trgl.size();k++) {
-		vector<Vertex> ver = trgl[k].getVertices();
-		for (int j = 0;j < 3;j++) {
-			cout << ver[j].getX() << "\t" << ver[j].getY() << "\t";
-		}
-		cout << "\n";
-	}*/
-
-	/*for(int k=0;k<trgl.size();k++){
-		vector<Vertex> ver=trgl[k].getVertices();
-		for(int j=0;j<3;j++){
-			cout<<ver[j].getX()<<"\t"<<ver[j].getY()<<"\n";
-		}
-	}*/
-	
+		
 	//Creating new output file for the new mesh
 	vector<Vertex> newver;
 	map<Vertex,int> vmap;
