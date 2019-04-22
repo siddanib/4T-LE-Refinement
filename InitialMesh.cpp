@@ -204,6 +204,8 @@ private:
 	int newVertices = 0; // Used during refinement
 	vector<Vertex> newNodes; // Used during refinement
 	bool refine = false; //Used during refinement
+	int count =0; //Used to delete triangles
+	//Obsolete triangles have count==1
 public:
 	/*Constructor*/
 	Triangle(Vertex vv1, Vertex vv2, Vertex vv3) {
@@ -362,6 +364,12 @@ public:
 		Vertex ver1 = this->getCentroid();
 		return ver1.equals(ver);
 	}
+	void incrementCount(){
+		count =count+1;
+	}
+	int getCount(){
+		return count;
+	}
 };
 
 int main() {
@@ -429,9 +437,9 @@ int main() {
 	cout << "No of Triangles in the Initial Mesh " << trgl.size() << endl;
 
 	//Test case setting two triangles to refine
-	trgl[0].setRefine(true);
+	//trgl[0].setRefine(true);
 	//trgl[1].setRefine(true);
-	//trgl[2].setRefine(true);
+	trgl[2].setRefine(true);
 	//trgl[3].setRefine(true);
 
 	for (int i = 0;i < trgl.size();i++) {
@@ -542,9 +550,6 @@ int main() {
 		}
 	}
 	
-	//Clearing maps for edges and triangles
-	emap.clear();
-	tmap.clear();
 	
 	//Updating all the triangles with bisected edges
 	for (int m = 0;m < trgl.size();m++) {
@@ -560,12 +565,22 @@ int main() {
 				newEdge.addOppVertices(longEdge.getVertex1());
 				newEdge.addOppVertices(longEdge.getVertex2());
 				edg.push_back(newEdge);
+				//Creating map location for newEdge
+				emap[newEdge.getMidpoint()] = edg.size()-1;
 				//Creating new triangles with refine as false,false is preassigned and deleting the old one
 				Triangle t1(longVer, OpplongVer, longEdge.getVertex1());
 				Triangle t2(longVer, OpplongVer, longEdge.getVertex2());
 				trgl.push_back(t1);
+				//Creating map location for Triangles
+				tmap[t1.getCentroid()] = trgl.size()-1;
 				trgl.push_back(t2);
-				trgl.erase(trgl.begin() + m);
+				//Creating map location for Triangles
+				tmap[t2.getCentroid()] = trgl.size()-1;
+				//trgl.erase(trgl.begin() + m);
+				
+				//Incrementing the count of triangle at m
+				trgl[m].incrementCount();
+				
 				//Creating new edges (if they aren't already in edg) with their type and adding Opposite Vertex
 				int n[3][2] = {};//To keep track of the vector number and type of edge
 				Edge e1(longVer, longEdge.getVertex1());
@@ -579,7 +594,21 @@ int main() {
 				Edge oldEdge1(OpplongVer, longEdge.getVertex1());
 				Edge oldEdge2(OpplongVer, longEdge.getVertex2());
 				int w[2] = {};
-				for (int n1 = 0;n1 < edg.size();n1++) {
+				//Using maps instead of loops
+				n[0][0] = emap[longEdge.getMidpoint()];
+				n[0][1] = edg[n[0][0]].getType();
+				if(emap.count(e1.getMidpoint())>0){
+					n[1][0]=emap[e1.getMidpoint()];
+					n[1][1] = 1;
+				}
+				if(emap.count(e2.getMidpoint())>0){
+					n[2][0]=emap[e2.getMidpoint()];
+					n[2][1] = 1;
+				}
+				w[0] = emap[oldEdge1.getMidpoint()];
+				w[1] = emap[oldEdge2.getMidpoint()];
+				
+				/*for (int n1 = 0;n1 < edg.size();n1++) {
 					if (longEdge.equals(edg[n1])) {
 						n[0][0] = n1;
 						n[0][1] = edg[n1].getType();
@@ -598,7 +627,7 @@ int main() {
 					if (oldEdge2.equals(edg[n1])) {
 						w[1] = n1;
 					}
-				}
+				}*/
 				//For New edge 1
 				if (n[1][1] == 0) { //Means edge e1 doesnt exist
 					e1.addOppVertices(OpplongVer);
@@ -639,18 +668,24 @@ int main() {
 				Triangle t2(longVer, oppLongVer, otherVer);
 				Triangle t3(longVer, otherVer, thirdVer);
 				trgl.push_back(t1);
+				tmap[t1.getCentroid()]  = trgl.size()-1;
 				trgl.push_back(t2);
+				tmap[t2.getCentroid()]  = trgl.size()-1;
 				trgl.push_back(t3);
-				trgl.erase(trgl.begin() + m);
+				tmap[t3.getCentroid()]  = trgl.size()-1;
+				//trgl.erase(trgl.begin() + m);
+				trgl[m].incrementCount();
 				//Creating new edges (if they don't exist) and deletion of obsolete edges
 				Edge e1(oppLongVer, longVer, 0);
 				e1.addOppVertices(oppOtherVer);
 				e1.addOppVertices(otherVer);
 				edg.push_back(e1);
+				emap[e1.getMidpoint()] = edg.size()-1;
 				Edge e2(otherVer, longVer, 0);
 				e2.addOppVertices(oppLongVer);
 				e2.addOppVertices(thirdVer);
 				edg.push_back(e2);
+				emap[e2.getMidpoint()] = edg.size()-1;
 				int n[6][2] = {};
 				vector<Edge> e;
 				Edge ee1(oppOtherVer, thirdVer);
@@ -676,7 +711,29 @@ int main() {
 				//Creating old edge and updating it's oppVertex
 				Edge oldEdge(oppOtherVer, oppLongVer);
 				int w = 0; // To track oldEdge from edg
-				for (int n1 = 0;n1 < edg.size();n1++) {
+				//Using maps instead of loop
+				n[0][0] = emap[e[0].getMidpoint()];
+				n[0][1] = edg[n[0][0]].getType();
+				n[1][0] = emap[e[1].getMidpoint()];
+				n[1][1] = edg[n[1][0]].getType();
+				if(emap.count(e[2].getMidpoint())>0){
+					n[2][0] = emap[e[2].getMidpoint()];
+					n[2][1] = 1;
+				}
+				if(emap.count(e[3].getMidpoint())>0){
+					n[3][0] = emap[e[3].getMidpoint()];
+					n[3][1] = 1;
+				}
+				if(emap.count(e[4].getMidpoint())>0){
+					n[4][0] = emap[e[4].getMidpoint()];
+					n[4][1] = 1;
+				}
+				if(emap.count(e[5].getMidpoint())>0){
+					n[5][0] = emap[e[5].getMidpoint()];
+					n[5][1] = 1;
+				}
+				w = emap[oldEdge.getMidpoint()];
+				/*for (int n1 = 0;n1 < edg.size();n1++) {
 					for (int j = 0;j < 6;j++) {
 						if (e[j].equals(edg[n1])) {
 							if (j < 2) {
@@ -692,7 +749,7 @@ int main() {
 					if (oldEdge.equals(edg[n1])) {
 						w = n1;
 					}
-				}
+				}*/
 				for (int j = 2;j < 6;j++) {
 					int g = 0;//e[2],e[3] are subdivisions of e[0]
 					if (j > 3) { //e[4],e[5] are subdivisions of e[1]
@@ -733,23 +790,31 @@ int main() {
 				Triangle t3(oppLongVer, longVer, otherVer1);
 				Triangle t4(otherVer1, longVer, oppOtherVer2);
 				trgl.push_back(t1);
+				tmap[t1.getCentroid()] = trgl.size()-1;
 				trgl.push_back(t2);
+				tmap[t2.getCentroid()] = trgl.size()-1;
 				trgl.push_back(t3);
+				tmap[t3.getCentroid()] = trgl.size()-1;
 				trgl.push_back(t4);
-				trgl.erase(trgl.begin() + m);
+				tmap[t4.getCentroid()] = trgl.size()-1;
+				//trgl.erase(trgl.begin() + m);
+				trgl[m].incrementCount();
 				//Creating new edges (if they don't exist) and deletion of obsolete edges
 				Edge e1(otherVer2, longVer, 0);
 				e1.addOppVertices(oppOtherVer1);
 				e1.addOppVertices(oppLongVer);
 				edg.push_back(e1);
+				emap[e1.getMidpoint()] = edg.size()-1;
 				Edge e2(oppLongVer, longVer, 0);
 				e2.addOppVertices(otherVer2);
 				e2.addOppVertices(otherVer1);
 				edg.push_back(e2);
+				emap[e2.getMidpoint()] = edg.size()-1;
 				Edge e3(otherVer1, longVer, 0);
 				e3.addOppVertices(oppLongVer);
 				e3.addOppVertices(oppOtherVer2);
 				edg.push_back(e3);
+				emap[e3.getMidpoint()] = edg.size()-1;
 				int n[9][2] = {};
 				vector<Edge> e;
 				Edge ee1(oppOtherVer1, oppOtherVer2);
@@ -780,7 +845,38 @@ int main() {
 				//The 2nd column of n for pre-existing edges gives its type
 				//for  new edges (bisected edges) stores checker, which indicates
 				//whether the edge already exists or not
-				for (int n1 = 0;n1 < edg.size();n1++) {
+				n[0][0] = emap[e[0].getMidpoint()];
+				n[0][1] = edg[n[0][0]].getType();
+				n[1][0] = emap[e[1].getMidpoint()];
+				n[1][1] = edg[n[1][0]].getType();
+				n[2][0] = emap[e[2].getMidpoint()];
+				n[2][1] = edg[n[2][0]].getType();
+				if(emap.count(e[3].getMidpoint())>0){
+					n[3][0] = emap[e[3].getMidpoint()];
+					n[3][1] = 1;
+				}
+				if(emap.count(e[4].getMidpoint())>0){
+					n[4][0] = emap[e[4].getMidpoint()];
+					n[4][1] = 1;
+				}
+				if(emap.count(e[5].getMidpoint())>0){
+					n[5][0] = emap[e[5].getMidpoint()];
+					n[5][1] = 1;
+				}
+				if(emap.count(e[6].getMidpoint())>0){
+					n[6][0] = emap[e[6].getMidpoint()];
+					n[6][1] = 1;
+				}
+				if(emap.count(e[7].getMidpoint())>0){
+					n[7][0] = emap[e[7].getMidpoint()];
+					n[7][1] = 1;
+				}
+				if(emap.count(e[8].getMidpoint())>0){
+					n[8][0] = emap[e[8].getMidpoint()];
+					n[8][1] = 1;
+				}
+				
+				/*for (int n1 = 0;n1 < edg.size();n1++) {
 					for (int j = 0;j < 9;j++) {
 						if (e[j].equals(edg[n1])) {
 							if (j < 3) {
@@ -793,7 +889,7 @@ int main() {
 							}
 						}
 					}
-				}
+				}*/
 				for (int j = 3;j < 9;j++) {
 					int g = 0;//e[3],e[4] are subdivisions of e[0]
 					if (j > 4) {//e[5],e[6] are subdivisions of e[1]
@@ -818,25 +914,35 @@ int main() {
 					edg[n[j][0]].incrementCount();
 				}
 			}
-			for (int h = 0;h < edg.size();h++) {
-				//Deleting of obsolete edge based on type and count
-				if (edg[h].getType() == 0) {
-					if (edg[h].getCount() == 2) {
-						edg.erase(edg.begin() + h);
-						h = h - 1;
-					}
-				}
-				else {
-					if (edg[h].getCount() == 1) {
-						edg.erase(edg.begin() + h);
-						h = h - 1;
-					}
-				}
+		}
+	}
+	for (int h = 0;h < edg.size();h++) {
+		//Deleting of obsolete edge based on type and count
+		if (edg[h].getType() == 0) {
+			if (edg[h].getCount() == 2) {
+				edg.erase(edg.begin() + h);
+				h = h - 1;
 			}
-			m = m - 1; //Better value cannot be taken
+		}
+		else {
+			if (edg[h].getCount() == 1) {
+				edg.erase(edg.begin() + h);
+				h = h - 1;
+			}
+		}
+	}
+	for(int i=0;i<trgl.size();i++){
+		if(trgl[i].getCount()!=0){
+			trgl.erase(trgl.begin() + i);
+			i=i-1;
 		}
 	}
 	//End of updating triangles
+	
+	//Clearing maps for edges and triangles
+	emap.clear();
+	tmap.clear();
+	
 	/*cout << "No of Edges\t" << edg.size() << endl;
 	cout << "No of Triangles\t" << trgl.size() << endl;
 	cout << "Edge info\n";
