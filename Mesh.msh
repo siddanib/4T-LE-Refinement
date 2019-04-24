@@ -3,11 +3,11 @@ $MeshFormat
 $EndMeshFormat
 $PhysicalNames
 5
-1 1 "Line4"
-1 2 "Line1"
-1 3 "Line2"
-1 4 "Line3"
-2 5 "Surf"
+1 1 "Conv1"
+1 2 "Temp1"
+1 3 "Flux1"
+1 4 "Temp2"
+2 5 "Inte1"
 $EndPhysicalNames
 $Nodes
 2113
