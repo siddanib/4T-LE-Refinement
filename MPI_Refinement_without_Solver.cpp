@@ -486,7 +486,7 @@ int main(int argc, char** argv){
 	}
 	inFile.close();
 	//Test case setting two triangles to refine
-	for(int i=0;i<2000;i++){
+	for(int i=0;i<trgl2.size();i++){
 		trgl2[i].setRefine(true);
 	}
 	//trgl2[0].setRefine(true);
