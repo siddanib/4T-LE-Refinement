@@ -486,7 +486,10 @@ int main(int argc, char** argv){
 	}
 	inFile.close();
 	//Test case setting two triangles to refine
-	trgl2[0].setRefine(true);
+	for(int i=0;i<2000;i++){
+		trgl2[i].setRefine(true);
+	}
+	//trgl2[0].setRefine(true);
 	//trgl2[1].setRefine(true);
 	//trgl2[2].setRefine(true);
 	//trgl2[3].setRefine(true);
@@ -904,10 +907,10 @@ int main(int argc, char** argv){
 		}
 	}
 	
+	//Clearing map of triangles
+	tmap.clear();
 	
 	//Updating all the triangles with bisected edges
-	//In this section of code map::count() is used to check
-	//if an edge already exists or not
 	for (int m = 0;m < trgl.size();m++) {
 		if (trgl[m].getNewVertices() > 0) {
 			//If only 1 new node has been added 
@@ -928,14 +931,14 @@ int main(int argc, char** argv){
 				Triangle t2(longVer, OpplongVer, longEdge.getVertex2());
 				trgl.push_back(t1);
 				//Creating map location for Triangles
-				tmap[t1.getCentroid()] = trgl.size()-1;
+				//tmap[t1.getCentroid()] = trgl.size()-1;
 				trgl.push_back(t2);
 				//Creating map location for Triangles
-				tmap[t2.getCentroid()] = trgl.size()-1;
-				//trgl.erase(trgl.begin() + m);
+				//tmap[t2.getCentroid()] = trgl.size()-1;
+				trgl.erase(trgl.begin() + m);
 				
 				//Incrementing the count of triangle at m
-				trgl[m].incrementCount();
+				//trgl[m].incrementCount();
 				
 				//Creating new edges (if they aren't already in edg) with their type and adding Opposite Vertex
 				int n[3][2] = {};//To keep track of the vector number and type of edge
@@ -967,7 +970,13 @@ int main(int argc, char** argv){
 				if (n[1][1] == 0) { //Means edge e1 doesnt exist
 					e1.addOppVertices(OpplongVer);
 					e1.setType(n[0][1]);
+					//These properties are coz of MPI
+					if(edg[n[0][0]].getmpiEdge()){
+						e1.setmpiEdge(true);
+						e1.setmpiProcessor(edg[n[0][0]].getmpiProcessor());
+					}
 					edg.push_back(e1);
+					emap[e1.getMidpoint()] = edg.size()-1;
 				}
 				else { //Means that edge exist
 					edg[n[1][0]].addOppVertices(OpplongVer);
@@ -976,7 +985,13 @@ int main(int argc, char** argv){
 				if (n[2][1] == 0) { //Means edge e2 doesnt exist
 					e2.addOppVertices(OpplongVer);
 					e2.setType(n[0][1]);
+					//These properties are coz of MPI
+					if(edg[n[0][0]].getmpiEdge()){
+						e2.setmpiEdge(true);
+						e2.setmpiProcessor(edg[n[0][0]].getmpiProcessor());
+					}
 					edg.push_back(e2);
+					emap[e2.getMidpoint()] = edg.size()-1;
 				}
 				else { //Means that edge exist
 					edg[n[2][0]].addOppVertices(OpplongVer);
@@ -1003,13 +1018,13 @@ int main(int argc, char** argv){
 				Triangle t2(longVer, oppLongVer, otherVer);
 				Triangle t3(longVer, otherVer, thirdVer);
 				trgl.push_back(t1);
-				tmap[t1.getCentroid()]  = trgl.size()-1;
+				//tmap[t1.getCentroid()]  = trgl.size()-1;
 				trgl.push_back(t2);
-				tmap[t2.getCentroid()]  = trgl.size()-1;
+				//tmap[t2.getCentroid()]  = trgl.size()-1;
 				trgl.push_back(t3);
-				tmap[t3.getCentroid()]  = trgl.size()-1;
-				
-				trgl[m].incrementCount();
+				//tmap[t3.getCentroid()]  = trgl.size()-1;
+				trgl.erase(trgl.begin() + m);
+				//trgl[m].incrementCount();
 				
 				//Creating new edges (if they don't exist) and deletion of obsolete edges
 				Edge e1(oppLongVer, longVer, 0);
@@ -1078,6 +1093,12 @@ int main(int argc, char** argv){
 					if (n[j][1] == 0) { //Means edge doesn't exist
 						e[j].setType(n[g][1]);
 						edg.push_back(e[j]);
+						//These properties are coz of MPI
+					    if(edg[n[g][0]].getmpiEdge()){
+						 e[j].setmpiEdge(true);
+						 e[j].setmpiProcessor(edg[n[g][0]].getmpiProcessor());
+					    }
+						emap[e[j].getMidpoint()] = edg.size()-1;
 					}
 					else {//Means edge exists
 						vector<Vertex> vec = e[j].getOppVertices();
@@ -1110,15 +1131,15 @@ int main(int argc, char** argv){
 				Triangle t3(oppLongVer, longVer, otherVer1);
 				Triangle t4(otherVer1, longVer, oppOtherVer2);
 				trgl.push_back(t1);
-				tmap[t1.getCentroid()] = trgl.size()-1;
+				//tmap[t1.getCentroid()] = trgl.size()-1;
 				trgl.push_back(t2);
-				tmap[t2.getCentroid()] = trgl.size()-1;
+				//tmap[t2.getCentroid()] = trgl.size()-1;
 				trgl.push_back(t3);
-				tmap[t3.getCentroid()] = trgl.size()-1;
+				//tmap[t3.getCentroid()] = trgl.size()-1;
 				trgl.push_back(t4);
-				tmap[t4.getCentroid()] = trgl.size()-1;
-				//trgl.erase(trgl.begin() + m);
-				trgl[m].incrementCount();
+				//tmap[t4.getCentroid()] = trgl.size()-1;
+				trgl.erase(trgl.begin() + m);
+				//trgl[m].incrementCount();
 				//Creating new edges (if they don't exist) and deletion of obsolete edges
 				Edge e1(otherVer2, longVer, 0);
 				e1.addOppVertices(oppOtherVer1);
@@ -1207,6 +1228,12 @@ int main(int argc, char** argv){
 					if (n[j][1] == 0) {//Means edge doesn't exist
 						e[j].setType(n[g][1]);
 						edg.push_back(e[j]);
+						//These properties are coz of MPI
+					    if(edg[n[g][0]].getmpiEdge()){
+						 e[j].setmpiEdge(true);
+						 e[j].setmpiProcessor(edg[n[g][0]].getmpiProcessor());
+					    }
+						emap[e[j].getMidpoint()] = edg.size()-1;
 					}
 					else {//Means edge exists
 						vector<Vertex> vec = e[j].getOppVertices();
@@ -1220,6 +1247,7 @@ int main(int argc, char** argv){
 					edg[n[j][0]].incrementCount();
 				}
 			}
+			m=m-1;
 		}
 	}
 	
@@ -1247,18 +1275,11 @@ int main(int argc, char** argv){
 			}
 		}
 	}
-	
-	for(int i=0;i<trgl.size();i++){
-		if(trgl[i].getCount()!=0){
-			trgl.erase(trgl.begin() + i);
-			i=i-1;
-		}
-	}
 	//End of updating triangles
 	
-	//Clearing maps for edges and triangles
+	//Clearing maps for edges
 	emap.clear();
-	tmap.clear();
+	//tmap.clear();
 	
 	//Transfering non zero edges from all processes to 
 	//process 0
