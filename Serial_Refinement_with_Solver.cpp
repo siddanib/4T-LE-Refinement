@@ -438,7 +438,6 @@ int main() {
 	}
 	inFile.close();
 
-
 	for (int i = 0;i < trgl.size();i++) {
 		Triangle t = trgl[i];
 		vector<Edge> ed = t.getEdges();
@@ -537,6 +536,8 @@ int main() {
 		}
 	}
 	
+	//Clearing maps for triangles
+	tmap.clear();
 	
 	//Updating all the triangles with bisected edges
 	for (int m = 0;m < trgl.size();m++) {
@@ -559,14 +560,14 @@ int main() {
 				Triangle t2(longVer, OpplongVer, longEdge.getVertex2());
 				trgl.push_back(t1);
 				//Creating map location for Triangles
-				tmap[t1.getCentroid()] = trgl.size()-1;
+				//tmap[t1.getCentroid()] = trgl.size()-1;
 				trgl.push_back(t2);
 				//Creating map location for Triangles
-				tmap[t2.getCentroid()] = trgl.size()-1;
-				//trgl.erase(trgl.begin() + m);
+				//tmap[t2.getCentroid()] = trgl.size()-1;
+				trgl.erase(trgl.begin() + m);
 				
 				//Incrementing the count of triangle at m
-				trgl[m].incrementCount();
+				//trgl[m].incrementCount();
 				
 				//Creating new edges (if they aren't already in edg) with their type and adding Opposite Vertex
 				int n[3][2] = {};//To keep track of the vector number and type of edge
@@ -599,6 +600,7 @@ int main() {
 					e1.addOppVertices(OpplongVer);
 					e1.setType(n[0][1]);
 					edg.push_back(e1);
+					emap[e1.getMidpoint()] = edg.size()-1;
 				}
 				else { //Means that edge exist
 					edg[n[1][0]].addOppVertices(OpplongVer);
@@ -608,6 +610,7 @@ int main() {
 					e2.addOppVertices(OpplongVer);
 					e2.setType(n[0][1]);
 					edg.push_back(e2);
+					emap[e2.getMidpoint()] = edg.size()-1;
 				}
 				else { //Means that edge exist
 					edg[n[2][0]].addOppVertices(OpplongVer);
@@ -634,13 +637,13 @@ int main() {
 				Triangle t2(longVer, oppLongVer, otherVer);
 				Triangle t3(longVer, otherVer, thirdVer);
 				trgl.push_back(t1);
-				tmap[t1.getCentroid()]  = trgl.size()-1;
+				//tmap[t1.getCentroid()]  = trgl.size()-1;
 				trgl.push_back(t2);
-				tmap[t2.getCentroid()]  = trgl.size()-1;
+				//tmap[t2.getCentroid()]  = trgl.size()-1;
 				trgl.push_back(t3);
-				tmap[t3.getCentroid()]  = trgl.size()-1;
-				
-				trgl[m].incrementCount();
+				//tmap[t3.getCentroid()]  = trgl.size()-1;
+				trgl.erase(trgl.begin() + m);
+				//trgl[m].incrementCount();
 				
 				//Creating new edges (if they don't exist) and deletion of obsolete edges
 				Edge e1(oppLongVer, longVer, 0);
@@ -709,6 +712,7 @@ int main() {
 					if (n[j][1] == 0) { //Means edge doesn't exist
 						e[j].setType(n[g][1]);
 						edg.push_back(e[j]);
+						emap[e[j].getMidpoint()] = edg.size()-1;
 					}
 					else {//Means edge exists
 						vector<Vertex> vec = e[j].getOppVertices();
@@ -741,15 +745,15 @@ int main() {
 				Triangle t3(oppLongVer, longVer, otherVer1);
 				Triangle t4(otherVer1, longVer, oppOtherVer2);
 				trgl.push_back(t1);
-				tmap[t1.getCentroid()] = trgl.size()-1;
+				//tmap[t1.getCentroid()] = trgl.size()-1;
 				trgl.push_back(t2);
-				tmap[t2.getCentroid()] = trgl.size()-1;
+				//tmap[t2.getCentroid()] = trgl.size()-1;
 				trgl.push_back(t3);
-				tmap[t3.getCentroid()] = trgl.size()-1;
+				//tmap[t3.getCentroid()] = trgl.size()-1;
 				trgl.push_back(t4);
-				tmap[t4.getCentroid()] = trgl.size()-1;
-				//trgl.erase(trgl.begin() + m);
-				trgl[m].incrementCount();
+				//tmap[t4.getCentroid()] = trgl.size()-1;
+				trgl.erase(trgl.begin() + m);
+				//trgl[m].incrementCount();
 				//Creating new edges (if they don't exist) and deletion of obsolete edges
 				Edge e1(otherVer2, longVer, 0);
 				e1.addOppVertices(oppOtherVer1);
@@ -838,6 +842,7 @@ int main() {
 					if (n[j][1] == 0) {//Means edge doesn't exist
 						e[j].setType(n[g][1]);
 						edg.push_back(e[j]);
+						emap[e[j].getMidpoint()] = edg.size()-1;
 					}
 					else {//Means edge exists
 						vector<Vertex> vec = e[j].getOppVertices();
@@ -851,6 +856,7 @@ int main() {
 					edg[n[j][0]].incrementCount();
 				}
 			}
+			m=m-1;
 		}
 	}
 	for (int h = 0;h < edg.size();h++) {
@@ -868,17 +874,17 @@ int main() {
 			}
 		}
 	}
-	for(int i=0;i<trgl.size();i++){
+	/*for(int i=0;i<trgl.size();i++){
 		if(trgl[i].getCount()!=0){
 			trgl.erase(trgl.begin() + i);
 			i=i-1;
 		}
-	}
+	}*/
 	//End of updating triangles
 	
 	//Clearing maps for edges and triangles
 	emap.clear();
-	tmap.clear();
+	//tmap.clear();
 		
 	//Creating new output file for the new mesh
 	vector<Vertex> newver;
@@ -890,12 +896,6 @@ int main() {
 			if(vmap.count(vex[j])>0){
 				l=1;
 			}
-			/*for(int k=0;k<newver.size();k++){
-				if(vex[j].equals(newver[k])){
-					l=1;
-					break;
-				}
-			}*/
 			if(l==0){
 				newver.push_back(vex[j]);
 				vmap[vex[j]] = newver.size();
