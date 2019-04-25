@@ -417,9 +417,6 @@ class Triangle{
 };
 
 int main(int argc, char** argv){
-	vector<Vertex> vertices0;
-	vector<Edge> edg0;
-	vector<Triangle> trgl0;
 	MPI_Init(&argc, &argv);
 	int num_process; // Number of processes
 	MPI_Comm_size(MPI_COMM_WORLD, &num_process);

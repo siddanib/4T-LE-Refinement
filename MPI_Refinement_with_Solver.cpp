@@ -417,9 +417,6 @@ class Triangle{
 };
 
 int main(int argc, char** argv){
-	vector<Vertex> vertices0;
-	vector<Edge> edg0;
-	vector<Triangle> trgl0;
 	MPI_Init(&argc, &argv);
 	int num_process; // Number of processes
 	MPI_Comm_size(MPI_COMM_WORLD, &num_process);
@@ -428,7 +425,7 @@ int main(int argc, char** argv){
 	MPI_Status status;
 	vector<Vertex> vertices;
 	vector<Edge> edg,edg2;
-	vector<Triangle> trgl,trgl2;
+	vector<Triangle> trgl,trgl2,trgl3;
 	
 	ifstream inFile;
 	inFile.open("SMesh.msh");
@@ -482,8 +479,11 @@ int main(int argc, char** argv){
 					inFile >> sta;
 					if(sta.compare("true")==0){
 						tre.setRefine(true);
+						trgl3.push_back(tre);
 					}
-					trgl2.push_back(tre);
+					else{
+						trgl2.push_back(tre);
+					}
 				}
 
 			}
@@ -494,6 +494,9 @@ int main(int argc, char** argv){
 	int triK, triL; //Used for distribution of triangle vector 
 	triK = trgl2.size()/num_process;
 	triL = trgl2.size()%num_process;
+	int triK1,triL1;
+	triK1 = trgl3.size()/num_process;
+	triL1 = trgl3.size()%num_process;
 	//Adding triangles of this processor to trgl
 	if(process_num<triL){
 		for(int j=process_num*(triK+1);j<=process_num*(triK+1)+triK;j++){
@@ -508,6 +511,20 @@ int main(int argc, char** argv){
 		}
 	}
 	trgl2.clear();
+	if(process_num<triL1){
+		for(int j=process_num*(triK1+1);j<=process_num*(triK1+1)+triK1;j++){
+			Triangle tq = trgl3[j];
+			trgl.push_back(tq);
+		}
+	}
+	else{
+		for(int j=process_num*triK1+triL1;j<=process_num*triK1+triL1+triK1-1;j++){
+			Triangle tq = trgl3[j];
+			trgl.push_back(tq);
+		}
+	}
+	trgl3.clear();	
+	
 	//Addding edges of this processor to edg
 	for(int i = 0;i < trgl.size();i++) {
 		Triangle t = trgl[i];
