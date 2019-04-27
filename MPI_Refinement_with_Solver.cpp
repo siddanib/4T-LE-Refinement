@@ -526,8 +526,12 @@ int main(int argc, char** argv){
 	trgl3.clear();	
 	
 	//Addding edges of this processor to edg
+	//Using maps for edges and triangles
+	map<Vertex,int> emap; //For edges
+	map<Vertex,int> tmap; //For triangles
 	for(int i = 0;i < trgl.size();i++) {
 		Triangle t = trgl[i];
+		tmap[t.getCentroid()] = i;
 		vector<Edge> ed = t.getEdges();
 		vector<Vertex> verr = t.getVertices();
 		for (int j = 0;j < 3;j++) {
@@ -546,6 +550,7 @@ int main(int argc, char** argv){
 					l = 0;
 					edg2[k].addOppVertices(veer);
 					edg.push_back(edg2[k]);
+					emap[edg2[k].getMidpoint()] = edg.size()-1;
 					break;
 				}
 			}
@@ -554,28 +559,12 @@ int main(int argc, char** argv){
 				Edge eg(ver[0], ver[1], 0); // Assigning type 0
 				eg.addOppVertices(veer);
 				edg.push_back(eg);
+				emap[eg.getMidpoint()] = edg.size()-1;
 			}
 		}
 	}
 	edg2.clear();
 	//Adding of opposite vertices to edges is done
-	
-	//Using maps for edges and triangles
-	map<Vertex,int> emap; //For edges
-	map<Vertex,int> tmap; //For triangles
-	
-	//Updating emap
-	for(int i=0;i<edg.size();i++){
-		Vertex va = edg[i].getMidpoint();
-		emap[va] = i;
-	}
-	
-	//Updating tmap
-	for(int i=0;i<trgl.size();i++){
-		Vertex va = trgl[i].getCentroid();
-		tmap[va] = i;
-	}
-	
 	
 	//Defining which edges of edg are mpiEdge and processor number in mpiProcessor
 	for(int i=0;i<edg.size();i++){

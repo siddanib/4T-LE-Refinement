@@ -438,8 +438,12 @@ int main() {
 	}
 	inFile.close();
 
+	//Using maps for edges and triangles
+	map<Vertex,int> emap; //For edges
+	map<Vertex,int> tmap; //For triangles
 	for (int i = 0;i < trgl.size();i++) {
 		Triangle t = trgl[i];
+		tmap[t.getCentroid()] = i;
 		vector<Edge> ed = t.getEdges();
 		vector<Vertex> verr = t.getVertices();
 		for (int j = 0;j < 3;j++) {
@@ -458,16 +462,14 @@ int main() {
 				Edge eg(ver[0], ver[1], 0); // Assigning type 0
 				eg.addOppVertices(veer);
 				edg.push_back(eg);
+				emap[eg.getMidpoint()] = edg.size()-1;
 			}
 		}
 	}
 	// Adding of opposite vertices to edges is done
 	
-	//Using maps for edges and triangles
-	map<Vertex,int> emap; //For edges
-	map<Vertex,int> tmap; //For triangles
 	
-	//Updating emap
+	/*//Updating emap
 	for(int i=0;i<edg.size();i++){
 		Vertex va = edg[i].getMidpoint();
 		emap[va] = i;
@@ -477,7 +479,7 @@ int main() {
 	for(int i=0;i<trgl.size();i++){
 		Vertex va = trgl[i].getCentroid();
 		tmap[va] = i;
-	}
+	}*/
 	
 	// Next, running through refinement of triangles (Use opposite vertex)
 	// Followed by deleting of old edges and triangles, and
