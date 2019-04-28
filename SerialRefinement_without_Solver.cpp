@@ -51,7 +51,10 @@ public:
 		return length;
 	}
 	bool equals(Vertex v3) {
-		if ((x == v3.getX()) && (y == v3.getY())) {
+		double met = pow(10,-8); //Metric
+		double xr = fabs(x-v3.getX());
+		double yr = fabs(y-v3.getY());
+		if ((xr<met) && (yr<met)) {
 			return true;
 		}
 		else {
@@ -79,6 +82,15 @@ public:
 	}
 };
 
+Vertex r(Vertex v){ //Used to round off to 8 digits after decimal
+	//Causing an issue with keys
+	double x = v.getX();
+	double y = v.getY();
+	double xp = floor(x*pow(10,8))/pow(10,8);
+	double yp = floor(y*pow(10,8))/pow(10,8);
+	Vertex ver(xp,yp);
+	return ver;
+}
 
 /*Edge type can be used to implement different boundary conditions*/
 class Edge {
@@ -164,35 +176,11 @@ public:
 		}
 	}
 	bool equals(Edge e1) {
-		int i = 0;
-		vector<Vertex> e1v = e1.getVertices();
-		Vertex e1v1 = e1v[0];
-		Vertex e1v2 = e1v[1];
-		if ((v1.equals(e1v1)) && (v2.equals(e1v2))) {
-			i = 1;
-		}
-		else {
-			i = 0;
-		}
-
-		if (i == 0) {
-			if ((v1.equals(e1v2)) && (v2.equals(e1v1))) {
-				i = 1;
-			}
-			else {
-				i = 0;
-			}
-		}
-
-		if (i == 1) {
-			return true;
-		}
-		else {
-			return false;
-		}
+		Vertex ve1 = e1.getMidpoint();
+		Vertex vw = this->getMidpoint();
+		return ve1.equals(vw);
 	}
 };
-
 
 
 
@@ -446,7 +434,7 @@ int main() {
 	map<Vertex,int> tmap; //For triangles
 	for (int i = 0;i < trgl.size();i++) {
 		Triangle t = trgl[i];
-		tmap[t.getCentroid()] = i;
+		tmap[r(t.getCentroid())] = i;
 		vector<Edge> ed = t.getEdges();
 		vector<Vertex> verr = t.getVertices();
 		for (int j = 0;j < 3;j++) {
@@ -465,7 +453,7 @@ int main() {
 				Edge eg(ver[0], ver[1], 0); // Assigning type 0
 				eg.addOppVertices(veer);
 				edg.push_back(eg);
-				emap[eg.getMidpoint()] = edg.size()-1;
+				emap[r(eg.getMidpoint())] = edg.size()-1;
 			}
 		}
 	}
@@ -499,7 +487,7 @@ int main() {
 				while (decision) {
 					//Finding the edge from edg which contains this point
 					int k; //To track edge number
-					k = emap[ver[j]];
+					k = emap[r(ver[j])];
 					//Found the edge
 					//Getting opposite vertices from this edge to construct neighbouring triangle
 					vector<Vertex> oppVer = edg[k].getOppVertices();
@@ -524,10 +512,10 @@ int main() {
 					int l; //To track triangle number
 					if (neigTri.size() == 1) {
 						Vertex va = neigTri[0].getCentroid();
-						if(tmap.count(va)<1){
+						if(tmap.count(r(va))<1){
 							cout<<"Error with tmap\n";
 						}
-						l = tmap[va];
+						l = tmap[r(va)];
 						trgl[l].addNewNode(ver[j]);
 						decision = !(ver[j].equals(trgl[l].getLongestEdge().getMidpoint()));
 						if (decision) {
@@ -546,7 +534,6 @@ int main() {
 	
 	//Clearing maps for triangles
 	tmap.clear();
-	
 	//Updating all the triangles with bisected edges
 	for (int m = 0;m < trgl.size();m++) {
 		if (trgl[m].getNewVertices() > 0) {
@@ -562,7 +549,7 @@ int main() {
 				newEdge.addOppVertices(longEdge.getVertex2());
 				edg.push_back(newEdge);
 				//Creating map location for newEdge
-				emap[newEdge.getMidpoint()] = edg.size()-1;
+				emap[r(newEdge.getMidpoint())] = edg.size()-1;
 				//Creating new triangles with refine as false,false is preassigned and deleting the old one
 				Triangle t1(longVer, OpplongVer, longEdge.getVertex1());
 				Triangle t2(longVer, OpplongVer, longEdge.getVertex2());
@@ -578,7 +565,7 @@ int main() {
 				//trgl[m].incrementCount();
 				
 				//Creating new edges (if they aren't already in edg) with their type and adding Opposite Vertex
-				int n[3][2] = {};//To keep track of the vector number and type of edge
+				int n[3][2] = {0};//To keep track of the vector number and type of edge
 				Edge e1(longVer, longEdge.getVertex1());
 				Edge e2(longVer, longEdge.getVertex2());
 				//The 2nd column of n for pre-existing edges gives its type
@@ -591,24 +578,24 @@ int main() {
 				Edge oldEdge2(OpplongVer, longEdge.getVertex2());
 				int w[2] = {};
 				//Using maps instead of loops
-				n[0][0] = emap[longEdge.getMidpoint()];
+				n[0][0] = emap[r(longEdge.getMidpoint())];
 				n[0][1] = edg[n[0][0]].getType();
-				if(emap.count(e1.getMidpoint())>0){
-					n[1][0]=emap[e1.getMidpoint()];
+				if(emap.count(r(e1.getMidpoint()))>0){
+					n[1][0]=emap[r(e1.getMidpoint())];
 					n[1][1] = 1;
 				}
-				if(emap.count(e2.getMidpoint())>0){
-					n[2][0]=emap[e2.getMidpoint()];
+				if(emap.count(r(e2.getMidpoint()))>0){
+					n[2][0]=emap[r(e2.getMidpoint())];
 					n[2][1] = 1;
 				}
-				w[0] = emap[oldEdge1.getMidpoint()];
-				w[1] = emap[oldEdge2.getMidpoint()];
+				w[0] = emap[r(oldEdge1.getMidpoint())];
+				w[1] = emap[r(oldEdge2.getMidpoint())];
 				//For New edge 1
 				if (n[1][1] == 0) { //Means edge e1 doesnt exist
 					e1.addOppVertices(OpplongVer);
 					e1.setType(n[0][1]);
 					edg.push_back(e1);
-					emap[e1.getMidpoint()] = edg.size()-1;
+					emap[r(e1.getMidpoint())] = edg.size()-1;
 				}
 				else { //Means that edge exist
 					edg[n[1][0]].addOppVertices(OpplongVer);
@@ -618,7 +605,7 @@ int main() {
 					e2.addOppVertices(OpplongVer);
 					e2.setType(n[0][1]);
 					edg.push_back(e2);
-					emap[e2.getMidpoint()] = edg.size()-1;
+					emap[r(e2.getMidpoint())] = edg.size()-1;
 				}
 				else { //Means that edge exist
 					edg[n[2][0]].addOppVertices(OpplongVer);
@@ -658,12 +645,12 @@ int main() {
 				e1.addOppVertices(oppOtherVer);
 				e1.addOppVertices(otherVer);
 				edg.push_back(e1);
-				emap[e1.getMidpoint()] = edg.size()-1;
+				emap[r(e1.getMidpoint())] = edg.size()-1;
 				Edge e2(otherVer, longVer, 0);
 				e2.addOppVertices(oppLongVer);
 				e2.addOppVertices(thirdVer);
 				edg.push_back(e2);
-				emap[e2.getMidpoint()] = edg.size()-1;
+				emap[r(e2.getMidpoint())] = edg.size()-1;
 				int n[6][2] = {};
 				vector<Edge> e;
 				Edge ee1(oppOtherVer, thirdVer);
@@ -690,27 +677,27 @@ int main() {
 				Edge oldEdge(oppOtherVer, oppLongVer);
 				int w = 0; // To track oldEdge from edg
 				//Using maps instead of loop
-				n[0][0] = emap[e[0].getMidpoint()];
+				n[0][0] = emap[r(e[0].getMidpoint())];
 				n[0][1] = edg[n[0][0]].getType();
-				n[1][0] = emap[e[1].getMidpoint()];
+				n[1][0] = emap[r(e[1].getMidpoint())];
 				n[1][1] = edg[n[1][0]].getType();
-				if(emap.count(e[2].getMidpoint())>0){
-					n[2][0] = emap[e[2].getMidpoint()];
+				if(emap.count(r(e[2].getMidpoint()))>0){
+					n[2][0] = emap[r(e[2].getMidpoint())];
 					n[2][1] = 1;
 				}
-				if(emap.count(e[3].getMidpoint())>0){
-					n[3][0] = emap[e[3].getMidpoint()];
+				if(emap.count(r(e[3].getMidpoint()))>0){
+					n[3][0] = emap[r(e[3].getMidpoint())];
 					n[3][1] = 1;
 				}
-				if(emap.count(e[4].getMidpoint())>0){
-					n[4][0] = emap[e[4].getMidpoint()];
+				if(emap.count(r(e[4].getMidpoint()))>0){
+					n[4][0] = emap[r(e[4].getMidpoint())];
 					n[4][1] = 1;
 				}
-				if(emap.count(e[5].getMidpoint())>0){
-					n[5][0] = emap[e[5].getMidpoint()];
+				if(emap.count(r(e[5].getMidpoint()))>0){
+					n[5][0] = emap[r(e[5].getMidpoint())];
 					n[5][1] = 1;
 				}
-				w = emap[oldEdge.getMidpoint()];
+				w = emap[r(oldEdge.getMidpoint())];
 
 				for (int j = 2;j < 6;j++) {
 					int g = 0;//e[2],e[3] are subdivisions of e[0]
@@ -720,7 +707,7 @@ int main() {
 					if (n[j][1] == 0) { //Means edge doesn't exist
 						e[j].setType(n[g][1]);
 						edg.push_back(e[j]);
-						emap[e[j].getMidpoint()] = edg.size()-1;
+						emap[r(e[j].getMidpoint())] = edg.size()-1;
 					}
 					else {//Means edge exists
 						vector<Vertex> vec = e[j].getOppVertices();
@@ -767,18 +754,18 @@ int main() {
 				e1.addOppVertices(oppOtherVer1);
 				e1.addOppVertices(oppLongVer);
 				edg.push_back(e1);
-				emap[e1.getMidpoint()] = edg.size()-1;
+				emap[r(e1.getMidpoint())] = edg.size()-1;
 				Edge e2(oppLongVer, longVer, 0);
 				e2.addOppVertices(otherVer2);
 				e2.addOppVertices(otherVer1);
 				edg.push_back(e2);
-				emap[e2.getMidpoint()] = edg.size()-1;
+				emap[r(e2.getMidpoint())] = edg.size()-1;
 				Edge e3(otherVer1, longVer, 0);
 				e3.addOppVertices(oppLongVer);
 				e3.addOppVertices(oppOtherVer2);
 				edg.push_back(e3);
-				emap[e3.getMidpoint()] = edg.size()-1;
-				int n[9][2] = {};
+				emap[r(e3.getMidpoint())] = edg.size()-1;
+				int n[9][2] = {0};
 				vector<Edge> e;
 				Edge ee1(oppOtherVer1, oppOtherVer2);
 				Edge ee2(oppOtherVer2, oppLongVer);
@@ -808,34 +795,34 @@ int main() {
 				//The 2nd column of n for pre-existing edges gives its type
 				//for  new edges (bisected edges) stores checker, which indicates
 				//whether the edge already exists or not
-				n[0][0] = emap[e[0].getMidpoint()];
+				n[0][0] = emap[r(e[0].getMidpoint())];
 				n[0][1] = edg[n[0][0]].getType();
-				n[1][0] = emap[e[1].getMidpoint()];
+				n[1][0] = emap[r(e[1].getMidpoint())];
 				n[1][1] = edg[n[1][0]].getType();
-				n[2][0] = emap[e[2].getMidpoint()];
+				n[2][0] = emap[r(e[2].getMidpoint())];
 				n[2][1] = edg[n[2][0]].getType();
-				if(emap.count(e[3].getMidpoint())>0){
-					n[3][0] = emap[e[3].getMidpoint()];
+				if(emap.count(r(e[3].getMidpoint()))>0){
+					n[3][0] = emap[r(e[3].getMidpoint())];
 					n[3][1] = 1;
 				}
-				if(emap.count(e[4].getMidpoint())>0){
-					n[4][0] = emap[e[4].getMidpoint()];
+				if(emap.count(r(e[4].getMidpoint()))>0){
+					n[4][0] = emap[r(e[4].getMidpoint())];
 					n[4][1] = 1;
 				}
-				if(emap.count(e[5].getMidpoint())>0){
-					n[5][0] = emap[e[5].getMidpoint()];
+				if(emap.count(r(e[5].getMidpoint()))>0){
+					n[5][0] = emap[r(e[5].getMidpoint())];
 					n[5][1] = 1;
 				}
-				if(emap.count(e[6].getMidpoint())>0){
-					n[6][0] = emap[e[6].getMidpoint()];
+				if(emap.count(r(e[6].getMidpoint()))>0){
+					n[6][0] = emap[r(e[6].getMidpoint())];
 					n[6][1] = 1;
 				}
-				if(emap.count(e[7].getMidpoint())>0){
-					n[7][0] = emap[e[7].getMidpoint()];
+				if(emap.count(r(e[7].getMidpoint()))>0){
+					n[7][0] = emap[r(e[7].getMidpoint())];
 					n[7][1] = 1;
 				}
-				if(emap.count(e[8].getMidpoint())>0){
-					n[8][0] = emap[e[8].getMidpoint()];
+				if(emap.count(r(e[8].getMidpoint()))>0){
+					n[8][0] = emap[r(e[8].getMidpoint())];
 					n[8][1] = 1;
 				}
 				
@@ -850,7 +837,7 @@ int main() {
 					if (n[j][1] == 0) {//Means edge doesn't exist
 						e[j].setType(n[g][1]);
 						edg.push_back(e[j]);
-						emap[e[j].getMidpoint()] = edg.size()-1;
+						emap[r(e[j].getMidpoint())] = edg.size()-1;
 					}
 					else {//Means edge exists
 						vector<Vertex> vec = e[j].getOppVertices();
@@ -889,7 +876,6 @@ int main() {
 		}
 	}*/
 	//End of updating triangles
-	
 	//Clearing maps for edges and triangles
 	emap.clear();
 	//tmap.clear();
@@ -901,12 +887,12 @@ int main() {
 		vector<Vertex> vex = trgl[i].getVertices();
 		for(int j=0;j<3;j++){
 			int l=0;
-			if(vmap.count(vex[j])>0){
+			if(vmap.count(r(vex[j]))>0){
 				l=1;
 			}
 			if(l==0){
 				newver.push_back(vex[j]);
-				vmap[vex[j]] = newver.size();
+				vmap[r(vex[j])] = newver.size();
 			}
 		}
 	}
@@ -944,7 +930,7 @@ int main() {
 	}
 	ifil.close();
 	
-	setprecision(10); //Setting precision for output file
+	setprecision(8); //Setting precision for output file
 	ifstream ifile;
 	ifile.open("Mesh.msh");
 	if(!ifile.is_open()){
@@ -967,7 +953,7 @@ int main() {
 	ofile<<"$Nodes"<<endl;
 	ofile<<newver.size()<<endl;
 	for(int i=0;i<newver.size();i++){
-		ofile<<vmap[newver[i]]<<" "<<newver[i].getX()<<" "<<newver[i].getY()<<" 0\n";
+		ofile<<vmap[r(newver[i])]<<" "<<newver[i].getX()<<" "<<newver[i].getY()<<" 0\n";
 	}
 	ofile<<"$EndNodes"<<endl;
 	ofile<<"$Elements"<<endl;
@@ -976,17 +962,17 @@ int main() {
 		if(i<newedg.size()){
 			int j1,j2;
 			vector<Vertex> vexx = newedg[i].getVertices();
-			j1 = vmap[vexx[0]];
-			j2 = vmap[vexx[1]];
+			j1 = vmap[r(vexx[0])];
+			j2 = vmap[r(vexx[1])];
 			ofile<<i+1<<" 1 2 "<<newedg[i].getType();
 			ofile<<" "<<newedg[i].getType()+1<<" "<<j1<<" "<<j2<<endl;
 		}
 		else{
 			int j1,j2,j3,jj2,jj3;
 			vector<Vertex> vexx = trgl[i-newedg.size()].getVertices();
-			j1=vmap[vexx[0]];
-			j2=vmap[vexx[1]];
-			j3=vmap[vexx[2]];
+			j1=vmap[r(vexx[0])];
+			j2=vmap[r(vexx[1])];
+			j3=vmap[r(vexx[2])];
 			double xx1,xx2,xx3,yy1,yy2,yy3,x21,y21,x31,y31,d;
 			xx1 = vexx[0].getX();
 			yy1 = vexx[0].getY();
