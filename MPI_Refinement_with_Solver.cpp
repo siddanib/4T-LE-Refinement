@@ -52,7 +52,10 @@ public:
 		return length;
 	}
 	bool equals(Vertex v3) {
-		if ((x == v3.getX()) && (y == v3.getY())) {
+		double met = pow(10,-8); //Metric
+		double xr = fabs(x-v3.getX());
+		double yr = fabs(y-v3.getY());
+		if ((xr<met) && (yr<met)) {
 			return true;
 		}
 		else {
@@ -80,7 +83,15 @@ public:
 	}
 };
 
-
+Vertex r(Vertex v){ //Used to round off to 8 digits after decimal
+	//Causing an issue with keys
+	double x = v.getX();
+	double y = v.getY();
+	double xp = floor(x*pow(10,8))/pow(10,8);
+	double yp = floor(y*pow(10,8))/pow(10,8);
+	Vertex ver(xp,yp);
+	return ver;
+}
 
 /*Edge type can be used to implement different boundary conditions*/
 class Edge{
@@ -183,32 +194,9 @@ class Edge{
 		}
 	}
 	bool equals(Edge e1){
-		int i=0;
-		vector<Vertex> e1v = e1.getVertices();
-		Vertex e1v1=e1v[0];
-		Vertex e1v2=e1v[1];
-		if((v1.equals(e1v1))&&(v2.equals(e1v2))){
-			i=1;
-		}
-		else{
-			i=0;
-		}
-		
-		if(i==0){
-            if((v1.equals(e1v2))&&(v2.equals(e1v1))){
-			i=1;
-		    }
-		    else{
-			i=0;
-		    }
-		}
-		
-		if(i==1){
-			return true;
-		}
-		else{
-			return false;
-		}
+		Vertex ve1 = e1.getMidpoint();
+		Vertex vw = this->getMidpoint();
+		return ve1.equals(vw);
 	}
 	void setmpiEdge(bool des){
 		mpiEdge = des;
@@ -427,6 +415,7 @@ int main(int argc, char** argv){
 	vector<Edge> edg,edg2;
 	vector<Triangle> trgl,trgl2,trgl3;
 	
+	map<Vertex,int> e2map; //For edges of edg2
 	ifstream inFile;
 	inFile.open("SMesh.msh");
 	if (!inFile.is_open()) {
@@ -466,6 +455,7 @@ int main(int argc, char** argv){
 					inFile >> m >> n;
 					Edge e(vertices[m - 1], vertices[n - 1], l);
 					edg2.push_back(e);
+					e2map[r(e.getMidpoint())] = edg2.size()-1;
 				}
 				else {
 					inFile >> q;
@@ -490,6 +480,7 @@ int main(int argc, char** argv){
 		}
 	}
 	inFile.close();
+	vertices.clear();
 
 	int triK, triL; //Used for distribution of triangle vector 
 	triK = trgl2.size()/num_process;
@@ -523,7 +514,7 @@ int main(int argc, char** argv){
 			trgl.push_back(tq);
 		}
 	}
-	trgl3.clear();	
+	trgl3.clear();		
 	
 	//Addding edges of this processor to edg
 	//Using maps for edges and triangles
@@ -531,14 +522,14 @@ int main(int argc, char** argv){
 	map<Vertex,int> tmap; //For triangles
 	for(int i = 0;i < trgl.size();i++) {
 		Triangle t = trgl[i];
-		tmap[t.getCentroid()] = i;
+		tmap[r(t.getCentroid())] = i;
 		vector<Edge> ed = t.getEdges();
 		vector<Vertex> verr = t.getVertices();
 		for (int j = 0;j < 3;j++) {
 			Edge edd = ed[j];
 			Vertex veer = verr[j];
 			int l = 1;
-			for(int k = 0;k<edg.size();k++){
+			/*for(int k = 0;k<edg.size();k++){
 				if(edd.equals(edg[k])){
 					l=0;
 					edg[k].addOppVertices(veer);
@@ -553,18 +544,46 @@ int main(int argc, char** argv){
 					emap[edg2[k].getMidpoint()] = edg.size()-1;
 					break;
 				}
+			}*/
+			if(emap.count(r(edd.getMidpoint()))==1){
+				l = 0;
+				int k = emap[r(edd.getMidpoint())];
+				edg[k].addOppVertices(veer);
 			}
+			if(e2map.count(r(edd.getMidpoint()))==1){
+				l = 0;
+				int k = e2map[r(edd.getMidpoint())];
+				edg2[k].addOppVertices(veer);
+				edg.push_back(edg2[k]);
+				emap[r(edg2[k].getMidpoint())] = edg.size()-1;
+			}
+			
 			if (l == 1) {
 				vector<Vertex> ver = edd.getVertices();
 				Edge eg(ver[0], ver[1], 0); // Assigning type 0
 				eg.addOppVertices(veer);
 				edg.push_back(eg);
-				emap[eg.getMidpoint()] = edg.size()-1;
+				emap[r(eg.getMidpoint())] = edg.size()-1;
 			}
 		}
 	}
 	edg2.clear();
+	e2map.clear();
 	//Adding of opposite vertices to edges is done
+	
+	
+	/*//Updating emap
+	for(int i=0;i<edg.size();i++){
+		Vertex va = edg[i].getMidpoint();
+		emap[va] = i;
+	}
+	
+	//Updating tmap
+	for(int i=0;i<trgl.size();i++){
+		Vertex va = trgl[i].getCentroid();
+		tmap[va] = i;
+	}*/
+	
 	
 	//Defining which edges of edg are mpiEdge and processor number in mpiProcessor
 	for(int i=0;i<edg.size();i++){
@@ -593,7 +612,7 @@ int main(int argc, char** argv){
 				while (decision) {
 					//Finding the edge from edg which contains this point
 					int k; //To track edge number
-					k = emap[ver[j]];
+					k = emap[r(ver[j])];
 					//Found the edge
 					//Cheking if the edge is an mpiEdge
 					//To set bisection to true
@@ -623,7 +642,7 @@ int main(int argc, char** argv){
 					int l; //To track triangle number
 					if (neigTri.size() == 1) {
 						Vertex va = neigTri[0].getCentroid();
-						l = tmap[va];
+						l = tmap[r(va)];
 						trgl[l].addNewNode(ver[j]);
 						decision = !(ver[j].equals(trgl[l].getLongestEdge().getMidpoint()));
 						if (decision) {
@@ -640,7 +659,9 @@ int main(int argc, char** argv){
 		}
 	}
 	//Refinement of the triangles in trgl is done
-	
+	if(process_num==0){
+		cout<<"New nodes have been added\n";
+	}
 	//Refinement of mpiEdges through exchange of information across processors
 	vector<Edge> mpiedg;
 	for(int i=0;i<edg.size();i++){
@@ -666,80 +687,83 @@ int main(int argc, char** argv){
 			//Sending size of mpiedg
 			MPI_Send(&si,1,MPI_INT,0,0,MPI_COMM_WORLD);
 			//Sending mpiedg to process 0
+			double* X;
+			X = (double*)malloc(si*7*sizeof(double));
 			for(int i=0;i<si;i++){
 				//Individually sending details of every edge
 				Vertex ve1 = mpiedg[i].getVertex1();
 				Vertex ve2 = mpiedg[i].getVertex2();
-				double X[4];
-				X[0] = ve1.getX(); 
-				X[1] = ve2.getX();
-				X[2] = ve1.getY();
-				X[3] = ve2.getY();
-				int Y[3];
-				Y[0] = mpiedg[i].getmpiProcessor();
-				Y[1] = mpiedg[i].getTrack();
-				Y[2]=0;//For bisection state
+				X[7*i+0] = ve1.getX(); 
+				X[7*i+1] = ve2.getX();
+				X[7*i+2] = ve1.getY();
+				X[7*i+3] = ve2.getY();
+				X[7*i+4] = (double)mpiedg[i].getmpiProcessor();
+				X[7*i+5] = (double)mpiedg[i].getTrack();
+				X[7*i+6]=0.;//For bisection state
 				if(mpiedg[i].getBisectionStateOfmpiEdge()){
-					Y[2]=1;
+					X[7*i+6]=1.;
 				}
-				MPI_Send(&X[0],4,MPI_DOUBLE,0,1,MPI_COMM_WORLD);
-				MPI_Send(&Y[0],3,MPI_INT,0,1,MPI_COMM_WORLD);
 			}
+			MPI_Send(&X[0],7*si,MPI_DOUBLE,0,1,MPI_COMM_WORLD);
+			free(X);
 			//Clearing mpiedg so that updated mpiedg can be received
 			mpiedg.clear();
 			//Receiving updated mpiedg vector
+			double* X1;
+			X1 = (double*)malloc(si*7*sizeof(double));
+			MPI_Recv(&X1[0],7*si,MPI_DOUBLE,0,2,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
 			for(int i=0;i<si;i++){
-				double X[4];
-				int Y[3];
 				//Don't forget setting mpiEdge to true
-				MPI_Recv(&X[0],4,MPI_DOUBLE,0,2,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
-				MPI_Recv(&Y[0],3,MPI_INT,0,2,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
-				Vertex ve1(X[0],X[2]),ve2(X[1],X[3]);
+				Vertex ve1(X1[7*i+0],X1[7*i+2]),ve2(X1[7*i+1],X1[7*i+3]);
 				Edge ed(ve1,ve2,0);
 				ed.setmpiEdge(true);
-				ed.setmpiProcessor(Y[0]);
-				ed.setTrack(Y[1]);
-				if(Y[2]==1){
+				ed.setmpiProcessor((int)X1[7*i+4]);
+				ed.setTrack((int)X1[7*i+5]);
+				if(X1[7*i+6]==1.){
 					ed.bisectmpiEdge(true);
 				}
 				mpiedg.push_back(ed);
 			}
+			free(X1);
 		}
 		else{
+			int* trk; //To track the no of mpiedgs received 
+			//from each process
+			trk = (int*)malloc(num_process*sizeof(int));
+			trk[0] = mpiedgtotal.size()-1;
 			//Collecting mpiedgs from all processes
 			for(int i=1;i<num_process;i++){
 				int j;
 				MPI_Recv(&j,1,MPI_INT,i,0,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
+				double* X;
+				X = (double*)malloc(j*7*sizeof(double));
+				MPI_Recv(&X[0],7*j,MPI_DOUBLE,i,1,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
 				for(int k=0;k<j;k++){
-					double X[4];
-					int Y[3];
 					//Don't forget setting mpiEdge to true
-					MPI_Recv(&X,4,MPI_DOUBLE,i,1,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
-					MPI_Recv(&Y,3,MPI_INT,i,1,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
-					Vertex ve1(X[0],X[2]),ve2(X[1],X[3]);
+					Vertex ve1(X[k*7+0],X[k*7+2]),ve2(X[k*7+1],X[k*7+3]);
 					Edge ed(ve1,ve2);
 					ed.setmpiEdge(true);
-					ed.setmpiProcessor(Y[0]);
-					ed.setTrack(Y[1]);
-					if(Y[2]==1){
+					ed.setmpiProcessor((int)X[7*k+4]);
+					ed.setTrack((int)X[7*k+5]);
+					if(X[7*k+6]==1.){
 						ed.bisectmpiEdge(true);
 					}
 					mpiedgtotal.push_back(ed);
 				}
+				free(X);
+				trk[i] = mpiedgtotal.size()-1;
 			}
 			//Communication between similar mpiedgs
 			for(int i=0;i<mpiedgtotal.size();i++){
-				for(int j=0;j<mpiedgtotal.size();j++){
-					if(i!=j){
-						if(mpiedgtotal[i].equals(mpiedgtotal[j])){
-							bool d1 =mpiedgtotal[i].getBisectionStateOfmpiEdge();
-							bool d2 =mpiedgtotal[j].getBisectionStateOfmpiEdge();
-							if(d1 || d2){
-								mpiedgtotal[i].bisectmpiEdge(true);
-								mpiedgtotal[i].setTrack(1);
-								mpiedgtotal[j].bisectmpiEdge(true);
-								mpiedgtotal[j].setTrack(1);
-							}
+				for(int j=i+1;j<mpiedgtotal.size();j++){
+					if(mpiedgtotal[i].equals(mpiedgtotal[j])){
+						bool d1 =mpiedgtotal[i].getBisectionStateOfmpiEdge();
+						bool d2 =mpiedgtotal[j].getBisectionStateOfmpiEdge();
+						if(d1 || d2){
+							mpiedgtotal[i].bisectmpiEdge(true);
+							mpiedgtotal[i].setTrack(1);
+							mpiedgtotal[j].bisectmpiEdge(true);
+							mpiedgtotal[j].setTrack(1);
 						}
 					}
 				}
@@ -747,7 +771,40 @@ int main(int argc, char** argv){
 			
 			//Redistribution of mpiedg from process 0 to respective processor
 			mpiedg.clear(); //This only clears mpiedg info of process 0
-			for(int i=0;i<mpiedgtotal.size();i++){
+			for(int i=0;i<=trk[0];i++){
+				mpiedg.push_back(mpiedgtotal[i]);
+				/*if(mpiedgtotal[i].getmpiProcessor()!=0){
+					cout<<"Error at line 759\n"; 
+				}*/
+			}
+			for(int i=1;i<num_process;i++){
+				int j,j1;
+				j1 = trk[i]-trk[i-1];
+				double* X;
+				X = (double*)malloc(j1*7*sizeof(double));
+				int k=0;
+				for(j=trk[i-1]+1;j<=trk[i];j++){
+					Vertex ve1 = mpiedgtotal[j].getVertex1();
+					Vertex ve2 = mpiedgtotal[j].getVertex2();
+					X[7*k+0] = ve1.getX(); 
+					X[7*k+1] = ve2.getX();
+					X[7*k+2] = ve1.getY();
+					X[7*k+3] = ve2.getY();
+					X[7*k+4] = (double)mpiedgtotal[j].getmpiProcessor();
+					X[7*k+5] = (double)mpiedgtotal[j].getTrack();
+					X[7*k+6]=0.;//For bisection state
+					if(mpiedgtotal[j].getBisectionStateOfmpiEdge()){
+						X[7*k+6]=1.;
+					}
+					/*if(mpiedgtotal[j].getmpiProcessor()!=i){
+						cout<<"Error in line 782\n";
+					}*/
+					k=k+1;
+				}
+				MPI_Send(&X[0],j1*7,MPI_DOUBLE,i,2,MPI_COMM_WORLD);
+				free(X);
+			}
+			/*for(int i=0;i<mpiedgtotal.size();i++){
 				int j;
 				j = mpiedgtotal[i].getmpiProcessor();
 				if(j==0){
@@ -772,16 +829,20 @@ int main(int argc, char** argv){
 					MPI_Send(&X[0],4,MPI_DOUBLE,j,2,MPI_COMM_WORLD);
 					MPI_Send(&Y[0],3,MPI_INT,j,2,MPI_COMM_WORLD);
 				}
-			}
+			}*/
 			//Clearing mpiedgtotal
 			mpiedgtotal.clear();
+			free(trk);
 		}
 		//Relaying information from mpiedg to edg
 		//Changing mpiEdgeBisected and track
+		//Also creating map for mpiedgs
+		map<Vertex,int> mpmap;
 		for(int i=0;i<mpiedg.size();i++){
 			Vertex val = mpiedg[i].getMidpoint();
 			int j;
-			j = emap[val];
+			j = emap[r(val)];
+			mpmap[r(val)] = j;
 			if(mpiedg[i].getBisectionStateOfmpiEdge()){
 				edg[j].bisectmpiEdge(true);
 				edg[j].setTrack(1);
@@ -794,14 +855,14 @@ int main(int argc, char** argv){
 			if(mpiedg[i].getBisectionStateOfmpiEdge()){
 				Vertex v1 = mpiedg[i].getMidpoint();
 				int ej; 
-				ej = emap[v1]; //Obtained corresponding edge
+				ej = emap[r(v1)]; //Obtained corresponding edge
 				vector<Vertex> ever = edg[ej].getOppVertices();
 				Vertex ever1 = edg[ej].getVertex1();
 				Vertex ever2 = edg[ej].getVertex2();
 				Triangle tj(ever1,ever2,ever[0]);
 				Vertex vva = tj.getCentroid();
 				int jj;
-				jj = tmap[vva];
+				jj = tmap[r(vva)];
 				trgl[jj].addNewNode(v1);
 				if(!(mpiedg[i].equals(trgl[jj].getLongestEdge()))){
 					Vertex v2 = trgl[jj].getLongestEdge().getMidpoint();
@@ -811,7 +872,7 @@ int main(int argc, char** argv){
 					Triangle tt = trgl[jj];
 					while(des){
 						int k;
-						k = emap[v2];
+						k = emap[r(v2)];
 						if(edg[k].getmpiEdge()){
 							edg[k].bisectmpiEdge(true);
 						}
@@ -837,7 +898,7 @@ int main(int argc, char** argv){
 						int l;
 					    if (neigTri.size() == 1) {
 							Vertex va1 = neigTri[0].getCentroid();
-							l = tmap[va1];
+							l = tmap[r(va1)];
 						    trgl[l].addNewNode(v2);
 						    des = !(v2.equals(trgl[l].getLongestEdge().getMidpoint()));
 							if(des){
@@ -852,12 +913,15 @@ int main(int argc, char** argv){
 		}
 		
 		//Clearing mpiedg and updating it
+		vector<Edge> mpiedg1(mpiedg);
 		mpiedg.clear();
-		for(int i=0;i<edg.size();i++){
-			if(edg[i].getmpiEdge()){
-				mpiedg.push_back(edg[i]);
-			}
+		for(int i=0;i<mpiedg1.size();i++){
+			Vertex ves = mpiedg1[i].getMidpoint();
+			int j = mpmap[r(ves)];
+			mpiedg.push_back(edg[j]);			
 		}
+		mpiedg1.clear();
+		mpmap.clear();
 		
 		deci = false;
 		for(int i=0;i<mpiedg.size();i++){
@@ -913,7 +977,9 @@ int main(int argc, char** argv){
 	
 	//Clearing map of triangles
 	tmap.clear();
-	
+	if(process_num==0){
+		cout<<"MPI Edge communication is done\n";
+	}
 	//Updating all the triangles with bisected edges
 	for (int m = 0;m < trgl.size();m++) {
 		if (trgl[m].getNewVertices() > 0) {
@@ -929,7 +995,7 @@ int main(int argc, char** argv){
 				newEdge.addOppVertices(longEdge.getVertex2());
 				edg.push_back(newEdge);
 				//Creating map location for newEdge
-				emap[newEdge.getMidpoint()] = edg.size()-1;
+				emap[r(newEdge.getMidpoint())] = edg.size()-1;
 				//Creating new triangles with refine as false,false is preassigned and deleting the old one
 				Triangle t1(longVer, OpplongVer, longEdge.getVertex1());
 				Triangle t2(longVer, OpplongVer, longEdge.getVertex2());
@@ -945,7 +1011,7 @@ int main(int argc, char** argv){
 				//trgl[m].incrementCount();
 				
 				//Creating new edges (if they aren't already in edg) with their type and adding Opposite Vertex
-				int n[3][2] = {};//To keep track of the vector number and type of edge
+				int n[3][2] = {0};//To keep track of the vector number and type of edge
 				Edge e1(longVer, longEdge.getVertex1());
 				Edge e2(longVer, longEdge.getVertex2());
 				//The 2nd column of n for pre-existing edges gives its type
@@ -958,18 +1024,18 @@ int main(int argc, char** argv){
 				Edge oldEdge2(OpplongVer, longEdge.getVertex2());
 				int w[2] = {};
 				//Using maps instead of loops
-				n[0][0] = emap[longEdge.getMidpoint()];
+				n[0][0] = emap[r(longEdge.getMidpoint())];
 				n[0][1] = edg[n[0][0]].getType();
-				if(emap.count(e1.getMidpoint())>0){
-					n[1][0]=emap[e1.getMidpoint()];
+				if(emap.count(r(e1.getMidpoint()))>0){
+					n[1][0]=emap[r(e1.getMidpoint())];
 					n[1][1] = 1;
 				}
-				if(emap.count(e2.getMidpoint())>0){
-					n[2][0]=emap[e2.getMidpoint()];
+				if(emap.count(r(e2.getMidpoint()))>0){
+					n[2][0]=emap[r(e2.getMidpoint())];
 					n[2][1] = 1;
 				}
-				w[0] = emap[oldEdge1.getMidpoint()];
-				w[1] = emap[oldEdge2.getMidpoint()];
+				w[0] = emap[r(oldEdge1.getMidpoint())];
+				w[1] = emap[r(oldEdge2.getMidpoint())];
 				//For New edge 1
 				if (n[1][1] == 0) { //Means edge e1 doesnt exist
 					e1.addOppVertices(OpplongVer);
@@ -980,7 +1046,7 @@ int main(int argc, char** argv){
 						e1.setmpiProcessor(edg[n[0][0]].getmpiProcessor());
 					}
 					edg.push_back(e1);
-					emap[e1.getMidpoint()] = edg.size()-1;
+					emap[r(e1.getMidpoint())] = edg.size()-1;
 				}
 				else { //Means that edge exist
 					edg[n[1][0]].addOppVertices(OpplongVer);
@@ -995,7 +1061,7 @@ int main(int argc, char** argv){
 						e2.setmpiProcessor(edg[n[0][0]].getmpiProcessor());
 					}
 					edg.push_back(e2);
-					emap[e2.getMidpoint()] = edg.size()-1;
+					emap[r(e2.getMidpoint())] = edg.size()-1;
 				}
 				else { //Means that edge exist
 					edg[n[2][0]].addOppVertices(OpplongVer);
@@ -1035,13 +1101,13 @@ int main(int argc, char** argv){
 				e1.addOppVertices(oppOtherVer);
 				e1.addOppVertices(otherVer);
 				edg.push_back(e1);
-				emap[e1.getMidpoint()] = edg.size()-1;
+				emap[r(e1.getMidpoint())] = edg.size()-1;
 				Edge e2(otherVer, longVer, 0);
 				e2.addOppVertices(oppLongVer);
 				e2.addOppVertices(thirdVer);
 				edg.push_back(e2);
-				emap[e2.getMidpoint()] = edg.size()-1;
-				int n[6][2] = {};
+				emap[r(e2.getMidpoint())] = edg.size()-1;
+				int n[6][2] = {0};
 				vector<Edge> e;
 				Edge ee1(oppOtherVer, thirdVer);
 				Edge ee2(thirdVer, oppLongVer);
@@ -1067,27 +1133,27 @@ int main(int argc, char** argv){
 				Edge oldEdge(oppOtherVer, oppLongVer);
 				int w = 0; // To track oldEdge from edg
 				//Using maps instead of loop
-				n[0][0] = emap[e[0].getMidpoint()];
+				n[0][0] = emap[r(e[0].getMidpoint())];
 				n[0][1] = edg[n[0][0]].getType();
-				n[1][0] = emap[e[1].getMidpoint()];
+				n[1][0] = emap[r(e[1].getMidpoint())];
 				n[1][1] = edg[n[1][0]].getType();
-				if(emap.count(e[2].getMidpoint())>0){
-					n[2][0] = emap[e[2].getMidpoint()];
+				if(emap.count(r(e[2].getMidpoint()))>0){
+					n[2][0] = emap[r(e[2].getMidpoint())];
 					n[2][1] = 1;
 				}
-				if(emap.count(e[3].getMidpoint())>0){
-					n[3][0] = emap[e[3].getMidpoint()];
+				if(emap.count(r(e[3].getMidpoint()))>0){
+					n[3][0] = emap[r(e[3].getMidpoint())];
 					n[3][1] = 1;
 				}
-				if(emap.count(e[4].getMidpoint())>0){
-					n[4][0] = emap[e[4].getMidpoint()];
+				if(emap.count(r(e[4].getMidpoint()))>0){
+					n[4][0] = emap[r(e[4].getMidpoint())];
 					n[4][1] = 1;
 				}
-				if(emap.count(e[5].getMidpoint())>0){
-					n[5][0] = emap[e[5].getMidpoint()];
+				if(emap.count(r(e[5].getMidpoint()))>0){
+					n[5][0] = emap[r(e[5].getMidpoint())];
 					n[5][1] = 1;
 				}
-				w = emap[oldEdge.getMidpoint()];
+				w = emap[r(oldEdge.getMidpoint())];
 
 				for (int j = 2;j < 6;j++) {
 					int g = 0;//e[2],e[3] are subdivisions of e[0]
@@ -1102,7 +1168,7 @@ int main(int argc, char** argv){
 						 e[j].setmpiEdge(true);
 						 e[j].setmpiProcessor(edg[n[g][0]].getmpiProcessor());
 					    }
-						emap[e[j].getMidpoint()] = edg.size()-1;
+						emap[r(e[j].getMidpoint())] = edg.size()-1;
 					}
 					else {//Means edge exists
 						vector<Vertex> vec = e[j].getOppVertices();
@@ -1149,17 +1215,17 @@ int main(int argc, char** argv){
 				e1.addOppVertices(oppOtherVer1);
 				e1.addOppVertices(oppLongVer);
 				edg.push_back(e1);
-				emap[e1.getMidpoint()] = edg.size()-1;
+				emap[r(e1.getMidpoint())] = edg.size()-1;
 				Edge e2(oppLongVer, longVer, 0);
 				e2.addOppVertices(otherVer2);
 				e2.addOppVertices(otherVer1);
 				edg.push_back(e2);
-				emap[e2.getMidpoint()] = edg.size()-1;
+				emap[r(e2.getMidpoint())] = edg.size()-1;
 				Edge e3(otherVer1, longVer, 0);
 				e3.addOppVertices(oppLongVer);
 				e3.addOppVertices(oppOtherVer2);
 				edg.push_back(e3);
-				emap[e3.getMidpoint()] = edg.size()-1;
+				emap[r(e3.getMidpoint())] = edg.size()-1;
 				int n[9][2] = {};
 				vector<Edge> e;
 				Edge ee1(oppOtherVer1, oppOtherVer2);
@@ -1190,34 +1256,34 @@ int main(int argc, char** argv){
 				//The 2nd column of n for pre-existing edges gives its type
 				//for  new edges (bisected edges) stores checker, which indicates
 				//whether the edge already exists or not
-				n[0][0] = emap[e[0].getMidpoint()];
+				n[0][0] = emap[r(e[0].getMidpoint())];
 				n[0][1] = edg[n[0][0]].getType();
-				n[1][0] = emap[e[1].getMidpoint()];
+				n[1][0] = emap[r(e[1].getMidpoint())];
 				n[1][1] = edg[n[1][0]].getType();
-				n[2][0] = emap[e[2].getMidpoint()];
+				n[2][0] = emap[r(e[2].getMidpoint())];
 				n[2][1] = edg[n[2][0]].getType();
-				if(emap.count(e[3].getMidpoint())>0){
-					n[3][0] = emap[e[3].getMidpoint()];
+				if(emap.count(r(e[3].getMidpoint()))>0){
+					n[3][0] = emap[r(e[3].getMidpoint())];
 					n[3][1] = 1;
 				}
-				if(emap.count(e[4].getMidpoint())>0){
-					n[4][0] = emap[e[4].getMidpoint()];
+				if(emap.count(r(e[4].getMidpoint()))>0){
+					n[4][0] = emap[r(e[4].getMidpoint())];
 					n[4][1] = 1;
 				}
-				if(emap.count(e[5].getMidpoint())>0){
-					n[5][0] = emap[e[5].getMidpoint()];
+				if(emap.count(r(e[5].getMidpoint()))>0){
+					n[5][0] = emap[r(e[5].getMidpoint())];
 					n[5][1] = 1;
 				}
-				if(emap.count(e[6].getMidpoint())>0){
-					n[6][0] = emap[e[6].getMidpoint()];
+				if(emap.count(r(e[6].getMidpoint()))>0){
+					n[6][0] = emap[r(e[6].getMidpoint())];
 					n[6][1] = 1;
 				}
-				if(emap.count(e[7].getMidpoint())>0){
-					n[7][0] = emap[e[7].getMidpoint()];
+				if(emap.count(r(e[7].getMidpoint()))>0){
+					n[7][0] = emap[r(e[7].getMidpoint())];
 					n[7][1] = 1;
 				}
-				if(emap.count(e[8].getMidpoint())>0){
-					n[8][0] = emap[e[8].getMidpoint()];
+				if(emap.count(r(e[8].getMidpoint()))>0){
+					n[8][0] = emap[r(e[8].getMidpoint())];
 					n[8][1] = 1;
 				}
 				
@@ -1237,7 +1303,7 @@ int main(int argc, char** argv){
 						 e[j].setmpiEdge(true);
 						 e[j].setmpiProcessor(edg[n[g][0]].getmpiProcessor());
 					    }
-						emap[e[j].getMidpoint()] = edg.size()-1;
+						emap[r(e[j].getMidpoint())] = edg.size()-1;
 					}
 					else {//Means edge exists
 						vector<Vertex> vec = e[j].getOppVertices();
@@ -1280,13 +1346,17 @@ int main(int argc, char** argv){
 		}
 	}
 	//End of updating triangles
-	
+	if(process_num==0){
+		cout<<"Triangles have been updated\n";
+	}
 	//Clearing maps for edges
 	emap.clear();
 	//tmap.clear();
 	
 	//Transfering non zero edges from all processes to 
 	//process 0
+	//Storing all non zero type edges
+	vector<Edge> newedg;
 	if(process_num != 0){
 		int es =0;
 		for(int i=0;i < edg.size();i++){
@@ -1295,36 +1365,44 @@ int main(int argc, char** argv){
 			}
 		}
 		MPI_Send(&es,1,MPI_INT,0,6,MPI_COMM_WORLD);
+		double* X;
+		X = (double*)malloc(5*es*sizeof(double));
+		int i1=0;
 		for(int i=0;i<edg.size();i++){
 			if(edg[i].getType() != 0){
 				Vertex vee1 = edg[i].getVertex1();
 				Vertex vee2 = edg[i].getVertex2();
-				double X[4];
-				X[0]=vee1.getX();
-				X[1]=vee2.getX();
-				X[2]=vee1.getY();
-				X[3]=vee2.getY();
-				int Y;
-				Y = edg[i].getType();
-				MPI_Send(&X[0],4,MPI_DOUBLE,0,7,MPI_COMM_WORLD);
-				MPI_Send(&Y,1,MPI_INT,0,77,MPI_COMM_WORLD);
+				X[i1*5+0]=vee1.getX();
+				X[i1*5+1]=vee2.getX();
+				X[i1*5+2]=vee1.getY();
+				X[i1*5+3]=vee2.getY();
+				X[i1*5+4] = (double)edg[i].getType();
+				i1=i1+1;
 			}
 		}
+		MPI_Send(&X[0],es*5,MPI_DOUBLE,0,7,MPI_COMM_WORLD);
+		free(X);
 	}
 	else{
+		for(int i=0;i<edg.size();i++){
+			if(edg[i].getType()!=0){
+				newedg.push_back(edg[i]);
+			}
+		}
 		for(int i=1;i<num_process;i++){
 			int es;
 			MPI_Recv(&es,1,MPI_INT,i,6,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
+			double* X;
+			X = (double*)malloc(es*5*sizeof(double*));
+			MPI_Recv(&X[0],es*5,MPI_DOUBLE,i,7,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
 			for(int j=0;j<es;j++){
-				double X[4];
-				int Y;
-				MPI_Recv(&X[0],4,MPI_DOUBLE,i,7,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
-				MPI_Recv(&Y,1,MPI_INT,i,77,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
-				Vertex vee1(X[0],X[2]);
-				Vertex vee2(X[1],X[3]);
-				Edge  ev(vee1,vee2,Y);
-				edg.push_back(ev);
+				Vertex vee1(X[j*5+0],X[j*5+2]);
+				Vertex vee2(X[j*5+1],X[j*5+3]);
+				int y = round(X[j*5+4]);
+				Edge  ev(vee1,vee2,y);
+				newedg.push_back(ev);
 			}
+			free(X);
 		}
 	}
 	
@@ -1334,35 +1412,39 @@ int main(int argc, char** argv){
 		int ts;
 		ts = trgl.size();
 		MPI_Send(&ts,1,MPI_INT,0,8,MPI_COMM_WORLD);
+		double* X;
+		X= (double*)malloc(ts*6*sizeof(double));
 		for(int i=0;i<trgl.size();i++){
 			vector<Vertex> tver = trgl[i].getVertices();
-			double X[6];
-			X[0] = tver[0].getX();
-			X[1] = tver[0].getY();
-			X[2] = tver[1].getX();
-			X[3] = tver[1].getY();
-			X[4] =  tver[2].getX();
-			X[5] = tver[2].getY();
-			MPI_Send(&X[0],6,MPI_DOUBLE,0,9,MPI_COMM_WORLD);
+			X[i*6+0] = tver[0].getX();
+			X[i*6+1] = tver[0].getY();
+			X[i*6+2] = tver[1].getX();
+			X[i*6+3] = tver[1].getY();
+			X[i*6+4] =  tver[2].getX();
+			X[i*6+5] = tver[2].getY();
 		}
+		MPI_Send(&X[0],ts*6,MPI_DOUBLE,0,9,MPI_COMM_WORLD);
+		free(X);
 	}else{
+		cout<<"Edge Transfer is done\n";
 		int ts=0;
 		for(int i=1;i<num_process;i++){
 			MPI_Recv(&ts,1,MPI_INT,i,8,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
+			double* X;
+			X= (double*)malloc(ts*6*sizeof(double));
+			MPI_Recv(&X[0],ts*6,MPI_DOUBLE,i,9,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
 			for(int j=0;j<ts;j++){
-				double X[6];
-				MPI_Recv(&X[0],6,MPI_DOUBLE,i,9,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
-				Vertex vq1(X[0],X[1]);
-				Vertex vq2(X[2],X[3]);
-				Vertex vq3(X[4],X[5]);
+				Vertex vq1(X[j*6+0],X[j*6+1]);
+				Vertex vq2(X[j*6+2],X[j*6+3]);
+				Vertex vq3(X[j*6+4],X[j*6+5]);
 				Triangle tr(vq1,vq2,vq3);
 				trgl.push_back(tr);
 			}
+			free(X);
 		}
-		
 	}
-	
 	if(process_num == 0){
+		cout<<"Creating output file\n";
 		//Creating new output file for the new mesh
 		vector<Vertex> newver;
 		map<Vertex,int> vmap;
@@ -1370,20 +1452,13 @@ int main(int argc, char** argv){
 			vector<Vertex> vex = trgl[i].getVertices();
 			for(int j=0;j<3;j++){
 				int l=0;
-				if(vmap.count(vex[j])>0){
+				if(vmap.count(r(vex[j]))>0){
 					l=1;
 				}
 				if(l==0){
 					newver.push_back(vex[j]);
-					vmap[vex[j]] = newver.size();
+					vmap[r(vex[j])] = newver.size();
 				}
-			}
-		}
-		//Storing all non zero type edges
-		vector<Edge> newedg;
-		for(int i=0;i<edg.size();i++){
-			if(edg[i].getType()!=0){
-				newedg.push_back(edg[i]);
 			}
 		}
 		//Retrieving physical name number of surface
@@ -1436,7 +1511,7 @@ int main(int argc, char** argv){
 		ofile<<"$Nodes"<<endl;
 		ofile<<newver.size()<<endl;
 		for(int i=0;i<newver.size();i++){
-			ofile<<vmap[newver[i]]<<" "<<newver[i].getX()<<" "<<newver[i].getY()<<" 0\n";
+			ofile<<vmap[r(newver[i])]<<" "<<newver[i].getX()<<" "<<newver[i].getY()<<" 0\n";
 		}
 		ofile<<"$EndNodes"<<endl;
 		ofile<<"$Elements"<<endl;
@@ -1445,17 +1520,17 @@ int main(int argc, char** argv){
 			if(i<newedg.size()){
 				int j1,j2;
 				vector<Vertex> vexx = newedg[i].getVertices();
-				j1 = vmap[vexx[0]];
-				j2 = vmap[vexx[1]];
+				j1 = vmap[r(vexx[0])];
+				j2 = vmap[r(vexx[1])];
 				ofile<<i+1<<" 1 2 "<<newedg[i].getType();
 				ofile<<" "<<newedg[i].getType()+1<<" "<<j1<<" "<<j2<<endl;
 			}
 			else{
 				int j1,j2,j3,jj2,jj3;
 				vector<Vertex> vexx = trgl[i-newedg.size()].getVertices();
-				j1=vmap[vexx[0]];
-				j2=vmap[vexx[1]];
-				j3=vmap[vexx[2]];
+				j1=vmap[r(vexx[0])];
+				j2=vmap[r(vexx[1])];
+				j3=vmap[r(vexx[2])];
 				double xx1,xx2,xx3,yy1,yy2,yy3,x21,y21,x31,y31,d;
 				xx1 = vexx[0].getX();
 				yy1 = vexx[0].getY();

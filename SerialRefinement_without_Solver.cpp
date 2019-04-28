@@ -420,7 +420,7 @@ int main() {
 		}
 	}
 	inFile.close();
-
+	vertices.clear();
 	//Test case setting two triangles to refine
 	for(int i=0;i<trgl.size();i++){
 		trgl[i].setRefine(true);
@@ -441,12 +441,10 @@ int main() {
 			Edge edd = ed[j];
 			Vertex veer = verr[j];
 			int l = 1;
-			for (int k = 0;k < edg.size();k++) {
-				if (edd.equals(edg[k])) {
-					l = 0;
-					edg[k].addOppVertices(veer);
-					break;
-				}
+			if (emap.count(r(edd.getMidpoint()))==1) {
+				l = 0;
+				int k = emap[r(edd.getMidpoint())];
+				edg[k].addOppVertices(veer);
 			}
 			if (l == 1) {
 				vector<Vertex> ver = edd.getVertices();
@@ -531,7 +529,7 @@ int main() {
 			}
 		}
 	}
-	
+	cout<<"Bisection Nodes have been added\n";
 	//Clearing maps for triangles
 	tmap.clear();
 	//Updating all the triangles with bisected edges
@@ -876,6 +874,7 @@ int main() {
 		}
 	}*/
 	//End of updating triangles
+	cout<<"Triangles have been updated\n";
 	//Clearing maps for edges and triangles
 	emap.clear();
 	//tmap.clear();
@@ -930,7 +929,7 @@ int main() {
 	}
 	ifil.close();
 	
-	setprecision(8); //Setting precision for output file
+	
 	ifstream ifile;
 	ifile.open("Mesh.msh");
 	if(!ifile.is_open()){
