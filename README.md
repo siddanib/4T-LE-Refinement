@@ -7,3 +7,8 @@ SerialRefinement_without_Solver.cpp and MPI_Refinement_without_Solver.cpp read t
 
 
 Serial_Refinement_with_Solver.cpp and MPI_Refinement_with_Solver.cpp read the Initial Mesh from "SMesh.msh", which contains "true" beside every triangle that has to be refined. This "SMesh.msh" file is an output from the solver.cpp. The output of these codes is "SNewMesh.msh" which can be read by GMSH. 
+
+
+Compiling the Codes:
+
+The serial versions were originally compiled using g++ and O1 optimization flag. The MPI parallel versions were compiled using mpiCC and without any optimization flags.
