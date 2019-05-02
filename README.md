@@ -12,3 +12,6 @@ Serial_Refinement_with_Solver.cpp and MPI_Refinement_with_Solver.cpp read the In
 Compiling the Codes:
 
 The serial versions were originally compiled using g++ and O1 optimization flag. The MPI parallel versions were compiled using mpiCC and without any optimization flags.
+
+ NOTE:
+ All the required files (Input files) have to be in the same folder as the codes to work.
